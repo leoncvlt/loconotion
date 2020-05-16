@@ -1,0 +1,62 @@
+/* enables hover effect on buttons */
+div[role="button"]:not(.notion-record-icon):hover {
+  background: rgba(55, 53, 47, 0.08);
+}
+
+/* hides loading spinner */
+.loading-spinner {
+  display: none !important;
+}
+
+/* hides elements on the top right (search box, duplicate, notion shortcut) */
+.notion-topbar > div > div:not(:first-child) {
+  display: none !important;
+}
+
+@media only screen and (max-width: 960px) {
+  /* normalizes banner width */
+  .notion-scroller > div > div:not([class]) {
+    width: 100% !important;
+    max-width: 900px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* normalizes content width */
+  .notion-page-content {
+    width: 100% !important;
+    max-width: unset !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  /* normalizes database views width */
+  .notion-list-view,
+  .notion-gallery-view,
+  .notion-table-view,
+  .notion-board-view,
+  .notion-calendar-view {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* add padding to banner, but not to image */
+  .notion-scroller > div:first-child > div:last-child {
+    padding-right: 2em !important;
+    padding-left: 2em !important;
+  }
+
+  /* add padding to content */
+  .notion-scroller > div:nth-child(2) {
+    padding-right: 2em !important;
+    padding-left: 2em !important;
+  }
+
+  /* collapses flex rows into columns */
+  .notion-column_list-block > div {
+    flex-direction: column;
+  }
+  .notion-column_list-block > div > * {
+    width: unset !important;
+  }
+}
