@@ -17,7 +17,7 @@ div[role="button"]:not(.notion-record-icon):hover {
   /* normalizes banner width */
   .notion-scroller > div > div:not([class]) {
     width: 100% !important;
-    max-width: 900px !important;
+    max-width: 960px !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
   }

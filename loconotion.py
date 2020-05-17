@@ -34,45 +34,6 @@ def setup_logger(name):
 
 log = setup_logger("loconotion-logger")
 
-def download_file(url, destination):
-  if not Path(destination).is_file():
-    # Disabling proxy speeds up requests time
-    # https://stackoverflow.com/questions/45783655/first-https-request-takes-much-more-time-than-the-rest
-    # https://stackoverflow.com/questions/28521535/requests-how-to-disable-bypass-proxy
-    session = requests.Session()
-    session.trust_env = False
-    log.info(f"Downloading {url} to {destination}")
-    response = session.get(url)  
-    Path(destination).parent.mkdir(parents=True, exist_ok=True)
-    with open(destination, "wb") as f:
-      f.write(response.content)
-  else:
-    log.debug(f"File {destination} was already downloaded")
-  return destination
-
-# def rich_download_file(url, destination):
-#   if not Path(destination).is_file():
-#     progress = Progress(auto_refresh = True)
-#      # Disabling proxy speeds up requests time
-#     session = requests.Session()
-#     session.trust_env = False
-#     Path(destination).parent.mkdir(parents=True, exist_ok=True)
-#     with open(destination, 'wb') as f:
-#       response = session.get(url, stream=True)
-#       total = response.headers.get('content-length')
-#       task_id = progress.add_task(url)
-#       if total is None:
-#         f.write(response.content)
-#       else:
-#         progress.update(task_id, total=int(total))
-#         for data in response.iter_content(chunk_size=4096):
-#           f.write(data)
-#           progress.update(task_id, advance=len(data))
-#         progress.update(task_id, completed =int(total))
-#   else:
-#     log.debug(f"File {destination} was already downloaded")
-#   return destination
-
 # class notion_page_loaded(object):
 #   """An expectation for checking that a notion page has loaded.
 #   """
@@ -135,7 +96,7 @@ class Parser():
     if (site_config.get("slug", None)):
       log.error("'slug' parameter has no effect in the [site] table, and should only present in page tables.")
       del site_config['slug']
-      
+
     # find a table in the configuration file whose key contains the passed token string
     matching_page_config = [value for key, value in self.config.items() if key.lower() in token]
     if (matching_page_config):
@@ -155,10 +116,10 @@ class Parser():
     custom_slug = self.get_page_config(url).get("slug", None)
     if custom_slug:
       log.debug(f"Custom slug found for url {url}: {custom_slug}")
-      return custom_slug.replace('/', '') + (".html" if extension else "")
+      return custom_slug.strip("/") + (".html" if extension else "")
     else:
       # if not, clean up the existing slug
-      path = urllib.parse.urlparse(url).path.replace('/', '')
+      path = urllib.parse.urlparse(url).path.strip("/")
       if ("-" in path and len(path.split("-")) > 1):
         # a standard notion page looks like the-page-title-[uiid]
         # strip the uuid and keep the page title only
@@ -168,6 +129,24 @@ class Parser():
         # not much to do here, just get rid of the query param
         path = path.split("?")[0].lower()
       return path + (".html" if extension else "")
+
+  def cache_file(self, url, filename = None):
+    if (not filename): filename = url
+    destination = self.dist_folder / filename
+    if not Path(destination).is_file():
+      # Disabling proxy speeds up requests time
+      # https://stackoverflow.com/questions/45783655/first-https-request-takes-much-more-time-than-the-rest
+      # https://stackoverflow.com/questions/28521535/requests-how-to-disable-bypass-proxy
+      session = requests.Session()
+      session.trust_env = False
+      log.info(f"Downloading '{url}' to '{destination}'")
+      response = session.get(url)  
+      Path(destination).parent.mkdir(parents=True, exist_ok=True)
+      with open(destination, "wb") as f:
+        f.write(response.content)
+    else:
+      log.debug(f"File '{destination}' was already downloaded")
+    return destination
 
   def init_chromedriver(self):
     log.info("Initialising chrome driver")
@@ -272,16 +251,17 @@ class Parser():
           if (img['src'].startswith('/')):
             # notion's images urls are in a weird format, need to sanitize them
             img_src = 'https://www.notion.so' + img['src'].split("notion.so")[-1].replace("notion.so", "").split("?")[0]
-            img_src = urllib.parse.unquote(img_src) #TODO
+            img_src = urllib.parse.unquote(img_src)
 
           # generate an hashed id for the image filename based the url,
           # so we avoid re-downloading images we have already downloaded,
           # and figure out the filename from the url (I know, just this once)
           img_extension = Path(urllib.parse.urlparse(img_src).path).suffix
+          #TODO: unsplash images don't have an extension in the url (they work though)
           img_name = hashlib.sha1(str.encode(img_src)).hexdigest();
           img_file = img_name + img_extension
 
-          download_file(img_src, self.dist_folder / img_file)
+          self.cache_file(img_src, img_file)
           img['src'] = img_file
         else:
           if (img['src'].startswith('/')):
@@ -293,8 +273,8 @@ class Parser():
         # we don't need the vendors stylesheet
         if ("vendors~" in link['href']):
           continue
-        css_file = link['href'].replace('/', '')
-        saved_css_file = download_file('https://www.notion.so' + link['href'], self.dist_folder / css_file)
+        css_file = link['href'].strip("/")
+        saved_css_file = self.cache_file('https://www.notion.so' + link['href'], css_file)
         with open(saved_css_file, 'rb') as f:
           stylesheet = cssutils.parseString(f.read())
           # open the stylesheet and check for any font-face rule,
@@ -302,7 +282,7 @@ class Parser():
             if rule.type == cssutils.css.CSSRule.FONT_FACE_RULE:
               # if any are found, download the font file
               font_file = rule.style['src'].split("url(/")[-1].split(") format")[0]
-              download_file(f'https://www.notion.so/{font_file}', self.dist_folder / font_file)
+              self.cache_file(f'https://www.notion.so/{font_file}', font_file)
         link['href'] = css_file
 
     # remove scripts and other tags we don't want / need
@@ -312,6 +292,8 @@ class Parser():
       intercom_div.decompose();
     for overlay_div in soup.findAll('div',{'class':'notion-overlay-container'}):
       overlay_div.decompose();
+    for vendors_css in soup.find_all("link", href=lambda x: x and 'vendors~' in x):
+      vendors_css.decompose();
 
     # add our custom logic to all toggle blocks
     for toggle_block in soup.findAll('div',{'class':'notion-toggle-block'}):
@@ -336,15 +318,16 @@ class Parser():
       "body" : ".notion-app-inner",
       "code" : ".notion-code-block *"
     }
-
     custom_fonts = self.get_page_config(url).get("fonts", {})
     if (custom_fonts):
       # append a stylesheet importing the google font for each unique font
       unique_custom_fonts = set(custom_fonts.values())
-      for font in unique_custom_fonts:  
-        custom_font_stylesheet = soup.new_tag("link", rel="stylesheet", 
-        href=f"https://fonts.googleapis.com/css2?family={font}:wght@500;600;700&display=swap")
-        soup.head.append(custom_font_stylesheet);
+      for font in unique_custom_fonts:
+        if (font):
+          google_fonts_embed_name = font.replace(" ", "+")
+          font_href = f"https://fonts.googleapis.com/css2?family={google_fonts_embed_name}:wght@500;600;700&display=swap"
+          custom_font_stylesheet = soup.new_tag("link", rel="stylesheet", href=font_href)
+          soup.head.append(custom_font_stylesheet);
 
       # go through each custom font, and add a css rule overriding the font-family
       # to the font override stylesheet targetting the appropriate selector 
@@ -356,12 +339,33 @@ class Parser():
       site_font = custom_fonts.get("site", None)
       # process global site font last to more granular settings can override it
       if (site_font):
-        log.debug(f"Setting global site font-family to {site_font}")
+        log.debug(f"Setting global site font-family to {site_font}"), 
         font_override_stylesheet.append(fonts_selectors["site"] + " {font-family:" + site_font + "}")
-
+      # finally append the font overrides stylesheets to the page
       soup.head.append(font_override_stylesheet)
 
-    # append custom stylesheet and script
+    # inject any custom elements to the page
+    custom_injects = self.get_page_config(url).get("inject", {})
+    def injects_custom_tags(section):
+      section_custom_injects = custom_injects.get(section, {})
+      for tag, elements in section_custom_injects.items():
+        for element in elements:
+          injected_tag = soup.new_tag(tag)
+          for attr, value in element.items():
+            injected_tag[attr] = value
+            # if the value refers to a file, copy it to the dist folder
+            if (attr.lower() == "href" or attr.lower() == "src"):
+              log.debug(f"Copying injected file '{value}'")
+              source = (Path.cwd() / value.strip("/"))
+              destination = (self.dist_folder / source.name)
+              shutil.copyfile(source, destination)
+              injected_tag[attr] = source.name
+          log.debug(f"Injecting <{section}> tag: {str(injected_tag)}")
+          soup.find(section).append(injected_tag)
+    injects_custom_tags("head")
+    injects_custom_tags("body")
+
+    # inject loconotion's custom stylesheet and script
     custom_css = soup.new_tag("link", rel="stylesheet", href="loconotion.css")
     soup.head.insert(-1, custom_css)
     custom_script = soup.new_tag("script", type="text/javascript", src="loconotion.js")
@@ -421,6 +425,9 @@ if __name__ == '__main__':
           Parser(parsed_config)
       else:
         log.critical(f"Config file {args.target} does not exists")
+  except FileNotFoundError as e:
+    log.critical(f'FileNotFoundError: {e}')
+    sys.exit(0)
   except KeyboardInterrupt:
     log.critical('Interrupted by user')
     try:
