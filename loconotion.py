@@ -130,6 +130,12 @@ class Parser():
   def get_page_config(self, token):
     # starts by grabbing the gobal site configuration table, if exists
     site_config = self.config.get("site", {})
+
+    # check if there's anything wrong with the site config
+    if (site_config.get("slug", None)):
+      log.error("'slug' parameter has no effect in the [site] table, and should only present in page tables.")
+      del site_config['slug']
+      
     # find a table in the configuration file whose key contains the passed token string
     matching_page_config = [value for key, value in self.config.items() if key.lower() in token]
     if (matching_page_config):
