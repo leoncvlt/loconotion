@@ -21,7 +21,9 @@ page = "https://www.notion.so/A-Notion-Page-03c403f4fdc94cc1b315b9469a8950ef"
     # site: changes the font for the whole page (apart from code blocks) but the following settings override it
     # navbar: site breadcrumbs on the top-left of the page
     # title: page title (under the icon)
-    # h1 / h2 / h3: heading blocks
+    # h1: heading blocks, and inline databases' titles
+    # h2: sub-heading blocks
+    # h3: sub-sub-heading blocks
     # body: non-heading text on the page
     # code: text inside code blocks
   [site.fonts]

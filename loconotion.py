@@ -34,18 +34,22 @@ def setup_logger(name):
 
 log = setup_logger("loconotion-logger")
 
-# class notion_page_loaded(object):
-#   """An expectation for checking that a notion page has loaded.
-#   """
-#   def __call__(self, driver):
-#     notion_presence = len(driver.find_elements_by_class_name("notion-presence-container"))
-#     loading_spinners = len(driver.find_elements_by_class_name("loading-spinner"));
-#     # embed_ghosts = len(driver.find_elements_by_css_selector("div[embed-ghost]"));
-#     log.debug(f"Waiting for page content to load (presence container: {notion_presence}, loaders: {loading_spinners} )")
-#     if (notion_presence and not loading_spinners):
-#       return True
-#     else:
-#       return False
+class notion_page_loaded(object):
+  """An expectation for checking that a notion page has loaded.
+  """
+  def __init__(self, url):
+    self.url = url
+
+  def __call__(self, driver):
+    notion_presence = len(driver.find_elements_by_class_name("notion-presence-container"))
+    collection_view_block = len(driver.find_elements_by_class_name("notion-collection_view_page-block"));
+    collection_search = len(driver.find_elements_by_class_name("collectionSearch"));
+    # embed_ghosts = len(driver.find_elements_by_css_selector("div[embed-ghost]"));
+    log.debug(f"Waiting for page content to load (presence container: {notion_presence}, loaders: {loading_spinners} )")
+    if (notion_presence and not loading_spinners):
+      return True
+    else:
+      return False
 
 class toggle_block_has_opened(object):
   """An expectation for checking that a notion toggle block has been opened.
@@ -312,7 +316,7 @@ class Parser():
       "site" : "div:not(.notion-code-block)",
       "navbar": ".notion-topbar div",
       "title" : ".notion-page-block > div, .notion-collection_view_page-block > div",
-      "h1" : ".notion-header-block div",
+      "h1" : ".notion-header-block div, notion-page-content > notion-collection_view-block > div:first-child div",
       "h2" : ".notion-sub_header-block div",
       "h3" : ".notion-sub_sub_header-block div",
       "body" : ".notion-app-inner",

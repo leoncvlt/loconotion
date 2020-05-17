@@ -23,7 +23,10 @@ div[role="button"]:not(.notion-record-icon):hover {
   }
 
   /* normalizes content width */
-  .notion-page-content {
+  .notion-page-content,
+  .notion-page-content > .notion-collection_view-block,
+  .notion-page-content > .notion-collection_view-block > div,
+  .notion-page-content > .notion-collection_view-block > .notion-scroller > div {
     width: 100% !important;
     max-width: unset !important;
     padding-right: 0 !important;
@@ -31,18 +34,18 @@ div[role="button"]:not(.notion-record-icon):hover {
   }
 
   /* add padding to banner, but not to image */
-  .notion-scroller > div:first-child > div:last-child:not(.notion-collection_view_page-block) {
+  .notion-frame > .notion-scroller > div:first-child > div:last-child {
     padding-right: 2em !important;
     padding-left: 2em !important;
   }
 
   /* add padding to content */
-  .notion-scroller > div:nth-child(2),
-  .notion-list-view,
-  .notion-gallery-view,
-  .notion-table-view,
-  .notion-board-view,
-  .notion-calendar-view {
+  .notion-scroller > .notion-page-content,
+  .notion-frame > .notion-scroller > .notion-scroller > .notion-list-view,
+  .notion-frame > .notion-scroller > .notion-scroller > .notion-gallery-view,
+  .notion-frame > .notion-scroller > .notion-scroller > .notion-table-view,
+  .notion-frame > .notion-scroller > .notion-scroller > .notion-board-view,
+  .notion-frame > .notion-scroller > .notion-scroller > .notion-calendar-view {
     padding-right: 2em !important;
     padding-left: 2em !important;
   }
