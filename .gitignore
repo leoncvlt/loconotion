@@ -112,6 +112,7 @@ dmypy.json
 .vscode
 env
 dist/*
+test/*
 debug.log
 webdrive.log
 *.bat

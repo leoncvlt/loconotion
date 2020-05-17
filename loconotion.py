@@ -34,18 +34,6 @@ def setup_logger(name):
 
 log = setup_logger("loconotion-logger")
 
-def get_clean_slug(url, extension = True):
-  path = urllib.parse.urlparse(url).path.replace('/', '')
-  if ("-" in path and len(path.split("-")) > 1):
-    # a standard notion page looks like the-page-title-[uiid]
-    # strip the uuid and keep the page title only
-    path = "-".join(path.split("-")[:-1]).lower()
-  elif ("?" in path):
-    # database pages just have an uiid and a query param
-    # not much to do here, just get rid of the query param
-    path = path.split("?")[0].lower()
-  return path + (".html" if extension else "")
-
 def download_file(url, destination):
   if not Path(destination).is_file():
     # Disabling proxy speeds up requests time
@@ -123,14 +111,14 @@ class Parser():
   def __init__(self, config = {}):
     url = config.get("page", None)
     if not url:
-      log.error("No url specified")
+      log.critical("No url specified")
       return
 
     self.driver = self.init_chromedriver()
     self.config = config
 
     # get the site name from the config, or make it up by cleaning the target page's slug
-    site_name = self.config.get("name", get_clean_slug(url, extension = False))
+    site_name = self.config.get("name", self.get_page_slug(url, extension = False))
 
     # set the output folder based on the site name, and create it if necessary
     self.dist_folder = Path(config.get("output", Path("dist") / site_name))
@@ -138,6 +126,42 @@ class Parser():
     log.info(f"Setting output path to {self.dist_folder}")
 
     self.run(url)
+
+  def get_page_config(self, token):
+    # starts by grabbing the gobal site configuration table, if exists
+    site_config = self.config.get("site", {})
+    # find a table in the configuration file whose key contains the passed token string
+    matching_page_config = [value for key, value in self.config.items() if key.lower() in token]
+    if (matching_page_config):
+      if (len(matching_page_config) > 1):
+        log.error(f"multiple matching page config tokens found for {token} in configuration file. Make sure pages urls / slugs are unique")
+        return site_config
+      else:
+        # if found, merge it on top of the global site configuration table
+        # log.debug(f"Config table found for page with token {token}")
+        return {**site_config, **matching_page_config[0]}
+    else:
+      # log.debug(f"No config table found for page token {token}, using global site config table")
+      return site_config
+
+  def get_page_slug(self, url, extension = True):
+    # first check if the url has a custom slug configured in the config file
+    custom_slug = self.get_page_config(url).get("slug", None)
+    if custom_slug:
+      log.debug(f"Custom slug found for url {url}: {custom_slug}")
+      return custom_slug.replace('/', '') + (".html" if extension else "")
+    else:
+      # if not, clean up the existing slug
+      path = urllib.parse.urlparse(url).path.replace('/', '')
+      if ("-" in path and len(path.split("-")) > 1):
+        # a standard notion page looks like the-page-title-[uiid]
+        # strip the uuid and keep the page title only
+        path = "-".join(path.split("-")[:-1]).lower()
+      elif ("?" in path):
+        # database pages just have an uiid and a query param
+        # not much to do here, just get rid of the query param
+        path = path.split("?")[0].lower()
+      return path + (".html" if extension else "")
 
   def init_chromedriver(self):
     log.info("Initialising chrome driver")
@@ -160,6 +184,7 @@ class Parser():
       index = url;
 
     log.info(f'Parsing page {url}')
+    log.debug(f'Using page config: {self.get_page_config(url)}')
     self.driver.get(url)
 
     # if ("This content does not exist" in self.driver.page_source):
@@ -170,7 +195,7 @@ class Parser():
       # WebDriverWait(self.driver, 10).until(notion_page_loaded())
       WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'notion-presence-container')))
     except TimeoutException as ex:
-      log.error("Timeout waiting for page content to load, or no content found. Are you sure the page is set to public?")
+      log.critical("Timeout waiting for page content to load, or no content found. Are you sure the page is set to public?")
       return
 
     time.sleep(2)
@@ -192,7 +217,7 @@ class Parser():
             try:
               WebDriverWait(self.driver, 10).until(toggle_block_has_opened(toggle_block))
             except TimeoutException as ex:
-              log.warn("Timeout waiting for toggle block to open")   
+              log.warning("Timeout waiting for toggle block to open")   
             opened_toggles.append(toggle_block) 
       # after all toggles have been opened, check the page again to see if
       # any toggle block had nested toggle blocks inside them
@@ -204,7 +229,7 @@ class Parser():
     open_toggle_blocks()
 
     # creates soup from the page to start parsing
-    soup = BeautifulSoup(self.driver.page_source)
+    soup = BeautifulSoup(self.driver.page_source, "html.parser")
 
     # process eventual embedded iframes
     for embed in soup.select('div[embed-ghost]'):
@@ -213,28 +238,22 @@ class Parser():
       iframe_parent['class'] = iframe_parent.get('class', []) + ['loconotion-iframe-target']
       iframe_parent['loconotion-iframe-src'] = iframe['src']
 
-    # process meta tags
-    def set_meta_tag(prop_name, prop_value, content):
-      log.debug(f"Setting meta tag {prop_value} to '{content}'")
-      tag = soup.find("meta", attrs = { prop_name : prop_value})
-      if (tag):
-        if (content): tag["content"] = content
-        else: tag.decompose();
-      else:
-        tag = soup.new_tag('meta')
-        tag.attrs[prop_name] = prop_value
-        tag.attrs['content'] = content
-        soup.head.append(tag)
-
     # clean up the default notion meta tags
     for tag in ["description", "twitter:card", "twitter:site", "twitter:title", "twitter:description", "twitter:image", "twitter:url", "apple-itunes-app"]:
-      set_meta_tag("name", tag, None)
+      unwanted_tag = soup.find("meta", attrs = { "name" : tag})
+      if (unwanted_tag): unwanted_tag.decompose();
     for tag in ["og:site_name", "og:type", "og:url", "og:title", "og:description", "og:image"]:
-      set_meta_tag("property", tag, None)
+      unwanted_og_tag = soup.find("meta", attrs = { "property" : tag})
+      if (unwanted_og_tag): unwanted_og_tag.decompose();
 
     # set custom meta tags
-    for name, content in self.config.get("meta", {}).items():
-      set_meta_tag("name", name, content)
+    custom_meta_tags = self.get_page_config(url).get("meta", [])
+    for custom_meta_tag in custom_meta_tags:
+      tag = soup.new_tag('meta')
+      for attr, value in custom_meta_tag.items():
+        tag.attrs[attr] = value
+      log.debug(f"Adding meta tag {str(tag)}")
+      soup.head.append(tag)
 
     # process images
     cache_images = True
@@ -300,7 +319,7 @@ class Parser():
         toggle_content['class'] = toggle_content.get('class', []) + ['loconotion-toggle-content']
         toggle_content.attrs['loconotion-toggle-id'] = toggle_button.attrs['loconotion-toggle-id'] = toggle_id
 
-    # embed custom google font
+    # embed custom google font(s)
     fonts_selectors = {
       "site" : "div:not(.notion-code-block)",
       "navbar": ".notion-topbar div",
@@ -312,7 +331,7 @@ class Parser():
       "code" : ".notion-code-block *"
     }
 
-    custom_fonts = self.config.get("fonts", {})
+    custom_fonts = self.get_page_config(url).get("fonts", {})
     if (custom_fonts):
       # append a stylesheet importing the google font for each unique font
       unique_custom_fonts = set(custom_fonts.values())
@@ -348,12 +367,12 @@ class Parser():
       if a['href'].startswith('/'):
         sub_page_href = 'https://www.notion.so' + a['href']
         sub_pages.append(sub_page_href)
-        a['href'] = get_clean_slug(sub_page_href) if sub_page_href != index else "index.html"
+        a['href'] = self.get_page_slug(sub_page_href) if sub_page_href != index else "index.html"
         log.debug(f"Found link to page {a['href']}")
 
     # exports the parsed page
     html_str = str(soup)
-    html_file = get_clean_slug(url) if url != index else "index.html"
+    html_file = self.get_page_slug(url) if url != index else "index.html"
     log.info(f"Exporting page {url} as {html_file}")
     with open(self.dist_folder / html_file, "wb") as f:
       f.write(html_str.encode('utf-8').strip())
@@ -385,9 +404,9 @@ if __name__ == '__main__':
           log.info("Initialising parser with simple page url")
           Parser({ "page" : args.target })
         else:
-          log.error(f"{args.target} is not a notion.so page")
+          log.critical(f"{args.target} is not a notion.so page")
       except requests.ConnectionError as exception:
-        log.error(f"{args.target} does not seem to be an existing web page")
+        log.critical(f"{args.target} does not seem to be an existing web page")
     else:
       if Path(args.target).is_file():
         with open(args.target) as f:
@@ -395,9 +414,9 @@ if __name__ == '__main__':
           log.info("Initialising parser with configuration file")
           Parser(parsed_config)
       else:
-        log.error(f"Config file {args.target} does not exists")
+        log.critical(f"Config file {args.target} does not exists")
   except KeyboardInterrupt:
-    log.error('Interrupted by user')
+    log.critical('Interrupted by user')
     try:
       sys.exit(0)
     except SystemExit:

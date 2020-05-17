@@ -1,20 +1,31 @@
 name = "Notion Test Site"
 page = "https://www.notion.so/A-Notion-Page-03c403f4fdc94cc1b315b9469a8950ef"
 
-[meta]
-title = "Loconotion Test Site"
-description = "A static site generated from a Notion.so page using Loconotion"
+[site]
+  [[site.meta]]
+  name = "title"
+  content = "Loconotion Test Site"
 
-[fonts]
-site = 'Roboto'
-navbar = ''
-title = ''
-h1 = 'Nunito'
-h2 = 'Nunito'
-h3 = 'Nunito'
-body = ''
-code = ''
+  [[site.meta]]
+  name = "description"
+  content = "A static site generated from a Notion.so page using Loconotion"
 
-[custom]
-js = []
-css = []
+  [site.fonts]
+  site = 'Roboto'
+  navbar = ''
+  title = ''
+  h1 = 'Nunito'
+  h2 = 'Nunito'
+  h3 = 'Nunito'
+  body = ''
+  code = ''
+
+[d2fa06f244e64f66880bb0491f58223d] #list page
+  slug = "list"
+
+  [[d2fa06f244e64f66880bb0491f58223d.meta]]
+  name = "description"
+  content = "A fullscreen list database page"
+
+[d2fa06f244e64f66880bb] #list page
+  slug = "list"
