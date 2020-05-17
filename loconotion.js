@@ -56,6 +56,6 @@ for (let i = 0; i < pendingIframes.length; i++) {
 
 const collectionSearchBoxes = document.getElementsByClassName("collectionSearch");
 for (let i = 0; i < collectionSearchBoxes.length; i++) {
-  const collectionSearchBox = collectionSearchBoxes.item(i).parentElement();
+  const collectionSearchBox = collectionSearchBoxes.item(i).parentElement;
   collectionSearchBox.style.display = "none";
 }

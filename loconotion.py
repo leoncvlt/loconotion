@@ -311,12 +311,12 @@ class Parser():
     fonts_selectors = {
       "site" : "div:not(.notion-code-block)",
       "navbar": ".notion-topbar div",
-      "title" : ".notion-page-block, .notion-collection_view_page-block",
+      "title" : ".notion-page-block > div, .notion-collection_view_page-block > div",
       "h1" : ".notion-header-block div",
       "h2" : ".notion-sub_header-block div",
       "h3" : ".notion-sub_sub_header-block div",
       "body" : ".notion-app-inner",
-      "code" : ".notion-code-block *"
+      "code" : ".notion-code-block *",
     }
     custom_fonts = self.get_page_config(url).get("fonts", {})
     if (custom_fonts):
@@ -335,12 +335,12 @@ class Parser():
       for target, custom_font in custom_fonts.items():
         if custom_font and not target == "site":
           log.debug(f"Setting {target} font-family to {custom_font}")
-          font_override_stylesheet.append(fonts_selectors[target] + " {font-family:" + custom_font + " !important}")
+          font_override_stylesheet.append(fonts_selectors[target] + " {font-family:" + custom_font + " !important} ")
       site_font = custom_fonts.get("site", None)
       # process global site font last to more granular settings can override it
       if (site_font):
         log.debug(f"Setting global site font-family to {site_font}"), 
-        font_override_stylesheet.append(fonts_selectors["site"] + " {font-family:" + site_font + "}")
+        font_override_stylesheet.append(fonts_selectors["site"] + " {font-family:" + site_font + "} ")
       # finally append the font overrides stylesheets to the page
       soup.head.append(font_override_stylesheet)
 

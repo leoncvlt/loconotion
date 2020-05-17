@@ -30,24 +30,19 @@ div[role="button"]:not(.notion-record-icon):hover {
     padding-left: 0 !important;
   }
 
-  /* normalizes database views width */
-  .notion-list-view,
-  .notion-gallery-view,
-  .notion-table-view,
-  .notion-board-view,
-  .notion-calendar-view {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-
   /* add padding to banner, but not to image */
-  .notion-scroller > div:first-child > div:last-child {
+  .notion-scroller > div:first-child > div:last-child:not(.notion-collection_view_page-block) {
     padding-right: 2em !important;
     padding-left: 2em !important;
   }
 
   /* add padding to content */
-  .notion-scroller > div:nth-child(2) {
+  .notion-scroller > div:nth-child(2),
+  .notion-list-view,
+  .notion-gallery-view,
+  .notion-table-view,
+  .notion-board-view,
+  .notion-calendar-view {
     padding-right: 2em !important;
     padding-left: 2em !important;
   }
