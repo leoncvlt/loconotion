@@ -1,0 +1,16 @@
+beautifulsoup4==4.9.0
+certifi==2020.4.5.1
+chardet==3.0.4
+colorama==0.4.3
+commonmark==0.9.1
+cssutils==1.0.2
+idna==2.9
+pprintpp==0.4.0
+Pygments==2.6.1
+requests==2.23.0
+rich==1.1.5
+selenium==3.141.0
+soupsieve==2.0
+toml==0.10.1
+typing-extensions==3.7.4.2
+urllib3==1.25.9

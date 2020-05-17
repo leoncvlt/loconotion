@@ -10,6 +10,8 @@ from rich.logging import RichHandler
 from rich.progress import Progress
 import urllib.parse
 import hashlib
+import toml
+import argparse
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -51,8 +53,7 @@ def download_file(url, destination):
     # https://stackoverflow.com/questions/28521535/requests-how-to-disable-bypass-proxy
     session = requests.Session()
     session.trust_env = False
-    parsed_url = urllib.parse.urlparse(url)
-    log.info(f"Downloading {parsed_url.scheme + parsed_url.netloc + parsed_url.path} to {destination}")
+    log.info(f"Downloading {url} to {destination}")
     response = session.get(url)  
     Path(destination).parent.mkdir(parents=True, exist_ok=True)
     with open(destination, "wb") as f:
@@ -84,19 +85,18 @@ def download_file(url, destination):
 #     log.debug(f"File {destination} was already downloaded")
 #   return destination
 
-class notion_page_loaded(object):
-  """An expectation for checking that a notion page has loaded.
-  """
-  def __call__(self, driver):
-    notion_presence = len(driver.find_elements_by_class_name("notion-presence-container"))
-    loading_spinners = len(driver.find_elements_by_class_name("loading-spinner"));
-    # embed_ghosts = len(driver.find_elements_by_css_selector("div[embed-ghost]"));
-    log.debug(f"Waiting for page content to load (presence container: {notion_presence}, loaders: {loading_spinners} )")
-    if (notion_presence and not loading_spinners):
-      return True
-    else:
-      return False
-
+# class notion_page_loaded(object):
+#   """An expectation for checking that a notion page has loaded.
+#   """
+#   def __call__(self, driver):
+#     notion_presence = len(driver.find_elements_by_class_name("notion-presence-container"))
+#     loading_spinners = len(driver.find_elements_by_class_name("loading-spinner"));
+#     # embed_ghosts = len(driver.find_elements_by_css_selector("div[embed-ghost]"));
+#     log.debug(f"Waiting for page content to load (presence container: {notion_presence}, loaders: {loading_spinners} )")
+#     if (notion_presence and not loading_spinners):
+#       return True
+#     else:
+#       return False
 
 class toggle_block_has_opened(object):
   """An expectation for checking that a notion toggle block has been opened.
@@ -120,13 +120,24 @@ class toggle_block_has_opened(object):
       return False
 
 class Parser():
-  def __init__(self, dist_folder):
-    self.dist_folder = Path(dist_folder)
-    self.driver = self.init_chromedriver()
+  def __init__(self, config = {}):
+    url = config.get("page", None)
+    if not url:
+      log.error("No url specified")
+      return
 
-    # create output path if it doesn't exists
+    self.driver = self.init_chromedriver()
+    self.config = config
+
+    # get the site name from the config, or make it up by cleaning the target page's slug
+    site_name = self.config.get("name", get_clean_slug(url, extension = False))
+
+    # set the output folder based on the site name, and create it if necessary
+    self.dist_folder = Path(config.get("output", Path("dist") / site_name))
     self.dist_folder.mkdir(parents=True, exist_ok=True)
     log.info(f"Setting output path to {self.dist_folder}")
+
+    self.run(url)
 
   def init_chromedriver(self):
     log.info("Initialising chrome driver")
@@ -150,11 +161,16 @@ class Parser():
 
     log.info(f'Parsing page {url}')
     self.driver.get(url)
+
+    # if ("This content does not exist" in self.driver.page_source):
+    #   log.error(f"No content found in {url}. Are you sure the page is set to public?")
+    #   return
+      
     try:
       # WebDriverWait(self.driver, 10).until(notion_page_loaded())
       WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'notion-presence-container')))
     except TimeoutException as ex:
-      log.error("Timeout waiting for page content to load")
+      log.error("Timeout waiting for page content to load, or no content found. Are you sure the page is set to public?")
       return
 
     time.sleep(2)
@@ -188,7 +204,7 @@ class Parser():
     open_toggle_blocks()
 
     # creates soup from the page to start parsing
-    soup = BeautifulSoup(self.driver.page_source, "lxml")
+    soup = BeautifulSoup(self.driver.page_source)
 
     # process eventual embedded iframes
     for embed in soup.select('div[embed-ghost]'):
@@ -199,40 +215,39 @@ class Parser():
 
     # process meta tags
     def set_meta_tag(prop_name, prop_value, content):
+      log.debug(f"Setting meta tag {prop_value} to '{content}'")
       tag = soup.find("meta", attrs = { prop_name : prop_value})
       if (tag):
-        log.debug(f"Setting meta tag {prop_value} to {content}")
         if (content): tag["content"] = content
         else: tag.decompose();
       else:
-        log.warn(f"Meta tag with {prop_name}: {prop_value} was not found")
+        tag = soup.new_tag('meta')
+        tag.attrs[prop_name] = prop_value
+        tag.attrs['content'] = content
+        soup.head.append(tag)
 
-    set_meta_tag("name", "description", None)
-    set_meta_tag("name", "twitter:card", None)
-    set_meta_tag("name", "twitter:site", None)
-    set_meta_tag("name", "twitter:title", None)
-    set_meta_tag("name", "twitter:description", None)
-    set_meta_tag("name", "twitter:image", None)
-    set_meta_tag("name", "twitter:url", None)
-    set_meta_tag("property", "og:site_name", None)
-    set_meta_tag("property", "og:type", None)
-    set_meta_tag("property", "og:url", None)
-    set_meta_tag("property", "og:title", None)
-    set_meta_tag("property", "og:description", None)
-    set_meta_tag("property", "og:image", None)
-    set_meta_tag("name", "apple-itunes-app", None)
+    # clean up the default notion meta tags
+    for tag in ["description", "twitter:card", "twitter:site", "twitter:title", "twitter:description", "twitter:image", "twitter:url", "apple-itunes-app"]:
+      set_meta_tag("name", tag, None)
+    for tag in ["og:site_name", "og:type", "og:url", "og:title", "og:description", "og:image"]:
+      set_meta_tag("property", tag, None)
+
+    # set custom meta tags
+    for name, content in self.config.get("meta", {}).items():
+      set_meta_tag("name", name, content)
 
     # process images
     cache_images = True
     for img in soup.findAll('img'):
       if img.has_attr('src'):
-        if (cache_images):
+        if (cache_images and not 'data:image' in img['src']):
           img_src = img['src']
 
           # if the path starts with /, it's one of notion's predefined images
           if (img['src'].startswith('/')):
             # notion's images urls are in a weird format, need to sanitize them
             img_src = 'https://www.notion.so' + img['src'].split("notion.so")[-1].replace("notion.so", "").split("?")[0]
+            img_src = urllib.parse.unquote(img_src) #TODO
 
           # generate an hashed id for the image filename based the url,
           # so we avoid re-downloading images we have already downloaded,
@@ -286,27 +301,45 @@ class Parser():
         toggle_content.attrs['loconotion-toggle-id'] = toggle_button.attrs['loconotion-toggle-id'] = toggle_id
 
     # embed custom google font
-    custom_font = None
-    if (custom_font):
-      custom_font_stylesheet_stylesheet = soup.new_tag("link")
-      custom_font_stylesheet.attrs["rel"] = "stylesheet"
-      custom_font_stylesheet.attrs["href"] = f"https://fonts.googleapis.com/css2?family={custom_font}:wght@500;600;700&display=swap"
-      soup.head.insert(-1, custom_font_stylesheet)
-      for app in soup.findAll('div',{'class':'notion-app-inner'}):
-        style = cssutils.parseStyle(app['style']);
-        style['font-family'] = f"'{custom_font}', {style['font-family']}"
-        app['style'] = style.cssText
+    fonts_selectors = {
+      "site" : "div:not(.notion-code-block)",
+      "navbar": ".notion-topbar div",
+      "title" : ".notion-page-block, .notion-collection_view_page-block",
+      "h1" : ".notion-header-block div",
+      "h2" : ".notion-sub_header-block div",
+      "h3" : ".notion-sub_sub_header-block div",
+      "body" : ".notion-app-inner",
+      "code" : ".notion-code-block *"
+    }
 
-    # append custom stylesheet
-    custom_css = soup.new_tag("link")
-    custom_css.attrs["rel"] = "stylesheet"
-    custom_css.attrs["href"] = "loconotion.css"
+    custom_fonts = self.config.get("fonts", {})
+    if (custom_fonts):
+      # append a stylesheet importing the google font for each unique font
+      unique_custom_fonts = set(custom_fonts.values())
+      for font in unique_custom_fonts:  
+        custom_font_stylesheet = soup.new_tag("link", rel="stylesheet", 
+        href=f"https://fonts.googleapis.com/css2?family={font}:wght@500;600;700&display=swap")
+        soup.head.append(custom_font_stylesheet);
+
+      # go through each custom font, and add a css rule overriding the font-family
+      # to the font override stylesheet targetting the appropriate selector 
+      font_override_stylesheet = soup.new_tag('style', type='text/css')
+      for target, custom_font in custom_fonts.items():
+        if custom_font and not target == "site":
+          log.debug(f"Setting {target} font-family to {custom_font}")
+          font_override_stylesheet.append(fonts_selectors[target] + " {font-family:" + custom_font + " !important}")
+      site_font = custom_fonts.get("site", None)
+      # process global site font last to more granular settings can override it
+      if (site_font):
+        log.debug(f"Setting global site font-family to {site_font}")
+        font_override_stylesheet.append(fonts_selectors["site"] + " {font-family:" + site_font + "}")
+
+      soup.head.append(font_override_stylesheet)
+
+    # append custom stylesheet and script
+    custom_css = soup.new_tag("link", rel="stylesheet", href="loconotion.css")
     soup.head.insert(-1, custom_css)
-
-    # append custom script
-    custom_script = soup.new_tag("script")
-    custom_script.attrs["type"] = "text/javascript"
-    custom_script.attrs["src"] = "loconotion.js"
+    custom_script = soup.new_tag("script", type="text/javascript", src="loconotion.js")
     soup.body.insert(-1, custom_script)
 
     # find sub-pages and clean slugs / links
@@ -339,15 +372,30 @@ class Parser():
     shutil.copyfile("loconotion.css", self.dist_folder / "loconotion.css");
     shutil.copyfile("loconotion.js", self.dist_folder / "loconotion.js");
 
+parser = argparse.ArgumentParser(description='Generate static websites from Notion.so pages')
+parser.add_argument('target', help='The config file containing the site properties, or the url of the Notion.so page to generate the site from')
+args = parser.parse_args()
+
 if __name__ == '__main__':
   try:
-    url = "https://www.notion.so/leoncvlt-f276385bf5ce42969497f0b03aef907e"
-    output_folder = Path("dist") / get_clean_slug(url, extension = False)
-    parser = Parser(output_folder)
-    parser.run(url)
-    # parser.run("https://www.notion.so/A-Notion-Page-03c403f4fdc94cc1b315b9469a8950ef")
-    # parser.run("https://www.notion.so/Media-be1a5c3e1c9640a0ab9ba0ba9b67e6a5")
-    # parser.run('https://www.notion.so/leoncvlt-f276385bf5ce42969497f0b03aef907e')
+    if urllib.parse.urlparse(args.target).scheme:
+      try:
+        response = requests.get(args.target)
+        if ("notion.so" in args.target):
+          log.info("Initialising parser with simple page url")
+          Parser({ "page" : args.target })
+        else:
+          log.error(f"{args.target} is not a notion.so page")
+      except requests.ConnectionError as exception:
+        log.error(f"{args.target} does not seem to be an existing web page")
+    else:
+      if Path(args.target).is_file():
+        with open(args.target) as f:
+          parsed_config = toml.loads(f.read())
+          log.info("Initialising parser with configuration file")
+          Parser(parsed_config)
+      else:
+        log.error(f"Config file {args.target} does not exists")
   except KeyboardInterrupt:
     log.error('Interrupted by user')
     try:
