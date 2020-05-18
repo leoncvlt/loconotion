@@ -31,7 +31,7 @@ def setup_logger(name):
   rich_handler = RichHandler()
   logger = logging.getLogger(name)
   logger.addHandler(rich_handler)
-  logger.setLevel(logging.DEBUG)
+  logger.setLevel(logging.INFO)
   return logger
 
 log = setup_logger("loconotion-logger")
@@ -76,22 +76,33 @@ class toggle_block_has_opened(object):
 
 class Parser():
   def __init__(self, config = {}):
-    url = config.get("page", None)
-    if not url:
-      log.critical("No url specified")
-      return
-
-    self.driver = self.init_chromedriver()
     self.config = config
+    url = self.config.get("page", None)
+    if not url:
+      log.critical("No initial page url specified. If passing a configuration file," +
+      "make sure it contains a 'page' key with the url of the notion.so page to parse")
+      return
 
     # get the site name from the config, or make it up by cleaning the target page's slug
     site_name = self.config.get("name", self.get_page_slug(url, extension = False))
 
-    # set the output folder based on the site name, and create it if necessary
+    # set the output folder based on the site name
     self.dist_folder = Path(config.get("output", Path("dist") / site_name))
-    self.dist_folder.mkdir(parents=True, exist_ok=True)
     log.info(f"Setting output path to {self.dist_folder}")
 
+    # check if the argument to clean the dist folder was passed
+    if (self.config.get("--clean", False)):
+      try:
+        shutil.rmtree(self.dist_folder)
+        log.info(f"Removing previously cached files in '{self.dist_folder}'")
+      except OSError as e:
+        log.error(f"Cannot remove '{self.dist_folder}': {e}")
+
+    # create the output folder if necessary
+    self.dist_folder.mkdir(parents=True, exist_ok=True)
+
+    # initialize chromedriver and start parsing
+    self.driver = self.init_chromedriver()
     self.run(url)
 
   def get_page_config(self, token):
@@ -203,7 +214,7 @@ class Parser():
       service_log_path=str(Path.cwd() / "webdrive.log"),
       options=chrome_options)
 
-  def parse_page(self, url, processed_pages = [], index = None):
+  def parse_page(self, url, processed_pages = {}, index = None):
     # if this is the first page being parse, set it as the index.html
     if (not index):
       index = url;
@@ -416,17 +427,20 @@ class Parser():
     # exports the parsed page
     html_str = str(soup)
     html_file = self.get_page_slug(url) if url != index else "index.html"
+    if (html_file in processed_pages.values()):
+      log.error(f"Found duplicate pages with slug '{html_file}' - previous one will be overwritten." +
+      "make sure that your notion pages names or custom slugs in the configuration files are unique")
     log.info(f"Exporting page {url} as {html_file}")
     with open(self.dist_folder / html_file, "wb") as f:
       f.write(html_str.encode('utf-8').strip())
-    processed_pages.append(url)
+    processed_pages[url] = html_file
 
     # parse sub-pages
     if (sub_pages):
       if (processed_pages): log.debug(f"Pages processed so far: {processed_pages}")
       for sub_page in sub_pages:
-        if not sub_page in processed_pages:
-          self.parse_page(sub_page, processed_pages, index)
+        if not sub_page in processed_pages.keys():
+          self.parse_page(sub_page, processed_pages = processed_pages, index = index)
     
     #we're all done!
     return processed_pages
@@ -442,16 +456,28 @@ class Parser():
 
 parser = argparse.ArgumentParser(description='Generate static websites from Notion.so pages')
 parser.add_argument('target', help='The config file containing the site properties, or the url of the Notion.so page to generate the site from')
+parser.add_argument('--clean', action='store_true', default=False, help='Delete all previously cached files for the site before generating it')
+parser.add_argument("-v", "--verbose", action="store_true", help="Shows way more exciting facts in the output")
 args = parser.parse_args()
 
+
+
 if __name__ == '__main__':
+  if args.verbose:
+    log.setLevel(logging.DEBUG)
+
+  def extend_configuration_from_args(config):
+    if (args.clean): config['--clean'] = True
+    return config
+
   try:
     if urllib.parse.urlparse(args.target).scheme:
       try:
         response = requests.get(args.target)
         if ("notion.so" in args.target):
           log.info("Initialising parser with simple page url")
-          Parser({ "page" : args.target })
+          config = extend_configuration_from_args({ "page" : args.target })
+          Parser(config)
         else:
           log.critical(f"{args.target} is not a notion.so page")
       except requests.ConnectionError as exception:
@@ -460,7 +486,9 @@ if __name__ == '__main__':
       if Path(args.target).is_file():
         with open(args.target) as f:
           parsed_config = toml.loads(f.read())
-          log.info(f"Initialising parser with configuration file: {parsed_config}")
+          parsed_config = extend_configuration_from_args(parsed_config)
+          log.info(f"Initialising parser with configuration file")
+          log.debug(parsed_config)
           Parser(parsed_config)
       else:
         log.critical(f"Config file {args.target} does not exists")
