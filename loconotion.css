@@ -57,4 +57,9 @@ div[role="button"]:not(.notion-record-icon):hover {
   .notion-column_list-block > div > * {
     width: unset !important;
   }
+
+  /* Stops text from overflowing past max-width on bookmark blocks; */
+  .notion-bookmark-block div {
+    white-space: unset !important;
+  }
 }

@@ -6,6 +6,8 @@ import time
 import uuid
 import logging
 import re
+import glob
+import mimetypes
 from rich.logging import RichHandler
 from rich.progress import Progress
 import urllib.parse
@@ -135,22 +137,56 @@ class Parser():
       return path + (".html" if extension else "")
 
   def cache_file(self, url, filename = None):
-    if (not filename): filename = url
+    # stringify the url in case it's a Path object
+    url = str(url)
+
+    # if no filename specificed, generate an hashed id based the url,
+    # so we avoid re-downloading / caching files we already have
+    if (not filename): 
+      filename = hashlib.sha1(str.encode(url)).hexdigest();
     destination = self.dist_folder / filename
-    if not Path(destination).is_file():
-      # Disabling proxy speeds up requests time
-      # https://stackoverflow.com/questions/45783655/first-https-request-takes-much-more-time-than-the-rest
-      # https://stackoverflow.com/questions/28521535/requests-how-to-disable-bypass-proxy
-      session = requests.Session()
-      session.trust_env = False
-      log.info(f"Downloading '{url}' to '{destination}'")
-      response = session.get(url)  
-      Path(destination).parent.mkdir(parents=True, exist_ok=True)
-      with open(destination, "wb") as f:
-        f.write(response.content)
+
+    # check if there are any files matching the filename, ignoring extension
+    matching_file = glob.glob(str(destination.with_suffix('.*')))
+    if not matching_file:
+      # if url has a network scheme, download the file
+      if "http" in urllib.parse.urlparse(url).scheme:
+        # Disabling proxy speeds up requests time
+        # https://stackoverflow.com/questions/45783655/first-https-request-takes-much-more-time-than-the-rest
+        # https://stackoverflow.com/questions/28521535/requests-how-to-disable-bypass-proxy
+        session = requests.Session()
+        session.trust_env = False
+        log.info(f"Downloading '{url}'")
+        response = session.get(url)
+
+        # if the filename does not have an extension at this point,
+        # try to infer it from the url, and if not possible, 
+        # from the content-type header mimetype
+        if (not destination.suffix):
+          file_extension = Path(urllib.parse.urlparse(url).path).suffix
+          if (not file_extension):
+            content_type = response.headers['content-type'] 
+            file_extension = mimetypes.guess_extension(content_type)
+          destination = destination.with_suffix(file_extension)
+
+        Path(destination).parent.mkdir(parents=True, exist_ok=True)
+        with open(destination, "wb") as f:
+          f.write(response.content)
+        return destination.relative_to(self.dist_folder)
+      # if not, check if it's a local file, and copy it to the dist folder
+      else:
+        if Path(url).is_file():
+          log.debug(f"Caching local file '{url}'")
+          destination = destination.with_suffix(Path(url).suffix)
+          shutil.copyfile(url, destination)
+          return destination.relative_to(self.dist_folder)
+    # if we already have a matching cached file, just return its relative path
     else:
-      log.debug(f"File '{destination}' was already downloaded")
-    return destination
+      cached_file = Path(matching_file[0]).relative_to(self.dist_folder)
+      log.debug(f"'{url}' was already downloaded")
+      return cached_file
+    # if all fails, return the original url
+    return url
 
   def init_chromedriver(self):
     log.info("Initialising chrome driver")
@@ -167,7 +203,7 @@ class Parser():
       service_log_path=str(Path.cwd() / "webdrive.log"),
       options=chrome_options)
 
-  def parse_page(self, url, processed_pages, index = None):
+  def parse_page(self, url, processed_pages = [], index = None):
     # if this is the first page being parse, set it as the index.html
     if (not index):
       index = url;
@@ -187,10 +223,12 @@ class Parser():
       log.critical("Timeout waiting for page content to load, or no content found. Are you sure the page is set to public?")
       return
 
+    # cooldown to allow eventual database items to load
+    # TODO: figure out a way to detect they loaded
     time.sleep(2)
 
-    # expands all the toggle block in the page to make their content visible
-    # we hook up our custom toggle logic afterwards
+    # function to expand all the toggle block in the page to make their content visible
+    # so we can hook up our custom toggle logic afterwards
     def open_toggle_blocks(exclude = []):
       opened_toggles = exclude;
       toggle_blocks = self.driver.find_elements_by_class_name("notion-toggle-block")
@@ -215,17 +253,23 @@ class Parser():
         # if so, run the function again
         open_toggle_blocks(opened_toggles)
 
+    # open those toggle blocks!
     open_toggle_blocks()
 
     # creates soup from the page to start parsing
     soup = BeautifulSoup(self.driver.page_source, "html.parser")
 
-    # process eventual embedded iframes
-    for embed in soup.select('div[embed-ghost]'):
-      iframe = embed.find('iframe');
-      iframe_parent = iframe.parent
-      iframe_parent['class'] = iframe_parent.get('class', []) + ['loconotion-iframe-target']
-      iframe_parent['loconotion-iframe-src'] = iframe['src']
+    # remove scripts and other tags we don't want / need
+    for unwanted in soup.findAll('script'):
+      unwanted.decompose();
+    for intercom_frame in soup.findAll('div',{'id':'intercom-frame'}):
+      intercom_frame.decompose();
+    for intercom_div in soup.findAll('div',{'class':'intercom-lightweight-app'}):
+      intercom_div.decompose();
+    for overlay_div in soup.findAll('div',{'class':'notion-overlay-container'}):
+      overlay_div.decompose();
+    for vendors_css in soup.find_all("link", href=lambda x: x and 'vendors~' in x):
+      vendors_css.decompose();
 
     # clean up the default notion meta tags
     for tag in ["description", "twitter:card", "twitter:site", "twitter:title", "twitter:description", "twitter:image", "twitter:url", "apple-itunes-app"]:
@@ -257,16 +301,8 @@ class Parser():
             img_src = 'https://www.notion.so' + img['src'].split("notion.so")[-1].replace("notion.so", "").split("?")[0]
             img_src = urllib.parse.unquote(img_src)
 
-          # generate an hashed id for the image filename based the url,
-          # so we avoid re-downloading images we have already downloaded,
-          # and figure out the filename from the url (I know, just this once)
-          img_extension = Path(urllib.parse.urlparse(img_src).path).suffix
-          #TODO: unsplash images don't have an extension in the url (they work though)
-          img_name = hashlib.sha1(str.encode(img_src)).hexdigest();
-          img_file = img_name + img_extension
-
-          self.cache_file(img_src, img_file)
-          img['src'] = img_file
+          cached_image = self.cache_file(img_src)
+          img['src'] = cached_image
         else:
           if (img['src'].startswith('/')):
             img['src'] = "https://www.notion.so" + img['src']
@@ -277,27 +313,18 @@ class Parser():
         # we don't need the vendors stylesheet
         if ("vendors~" in link['href']):
           continue
-        css_file = link['href'].strip("/")
-        saved_css_file = self.cache_file('https://www.notion.so' + link['href'], css_file)
-        with open(saved_css_file, 'rb') as f:
+        # css_file = link['href'].strip("/")
+        cached_css_file = self.cache_file('https://www.notion.so' + link['href'])
+        with open(self.dist_folder / cached_css_file, 'rb') as f:
           stylesheet = cssutils.parseString(f.read())
           # open the stylesheet and check for any font-face rule,
           for rule in stylesheet.cssRules:
             if rule.type == cssutils.css.CSSRule.FONT_FACE_RULE:
               # if any are found, download the font file
               font_file = rule.style['src'].split("url(/")[-1].split(") format")[0]
-              self.cache_file(f'https://www.notion.so/{font_file}', font_file)
-        link['href'] = css_file
-
-    # remove scripts and other tags we don't want / need
-    for unwanted in soup.findAll(['script', 'iframe']):
-      unwanted.decompose();
-    for intercom_div in soup.findAll('div',{'class':'intercom-lightweight-app'}):
-      intercom_div.decompose();
-    for overlay_div in soup.findAll('div',{'class':'notion-overlay-container'}):
-      overlay_div.decompose();
-    for vendors_css in soup.find_all("link", href=lambda x: x and 'vendors~' in x):
-      vendors_css.decompose();
+              cached_font_file = self.cache_file(f'https://www.notion.so/{font_file}')
+              rule.style['src'] = f"url({str(cached_font_file)})"
+        link['href'] = str(cached_css_file)
 
     # add our custom logic to all toggle blocks
     for toggle_block in soup.findAll('div',{'class':'notion-toggle-block'}):
@@ -360,19 +387,21 @@ class Parser():
             # if the value refers to a file, copy it to the dist folder
             if (attr.lower() == "href" or attr.lower() == "src"):
               log.debug(f"Copying injected file '{value}'")
-              source = (Path.cwd() / value.strip("/"))
-              destination = (self.dist_folder / source.name)
-              shutil.copyfile(source, destination)
-              injected_tag[attr] = source.name
+              cached_custom_file = self.cache_file((Path.cwd() / value.strip("/")))
+              # destination = (self.dist_folder / source.name)
+              # shutil.copyfile(source, destination)
+              injected_tag[attr] = str(cached_custom_file) #source.name
           log.debug(f"Injecting <{section}> tag: {str(injected_tag)}")
           soup.find(section).append(injected_tag)
     injects_custom_tags("head")
     injects_custom_tags("body")
 
     # inject loconotion's custom stylesheet and script
-    custom_css = soup.new_tag("link", rel="stylesheet", href="loconotion.css")
+    loconotion_custom_css = self.cache_file("loconotion.css")
+    custom_css = soup.new_tag("link", rel="stylesheet", href=str(loconotion_custom_css))
     soup.head.insert(-1, custom_css)
-    custom_script = soup.new_tag("script", type="text/javascript", src="loconotion.js")
+    loconotion_custom_js = self.cache_file("loconotion.js")
+    custom_script = soup.new_tag("script", type="text/javascript", src=str(loconotion_custom_js))
     soup.body.insert(-1, custom_script)
 
     # find sub-pages and clean slugs / links
@@ -393,17 +422,23 @@ class Parser():
     processed_pages.append(url)
 
     # parse sub-pages
-    for sub_page in sub_pages:
-      if not sub_page in processed_pages:
-        self.parse_page(sub_page, processed_pages, index)
+    if (sub_pages):
+      if (processed_pages): log.debug(f"Pages processed so far: {processed_pages}")
+      for sub_page in sub_pages:
+        if not sub_page in processed_pages:
+          self.parse_page(sub_page, processed_pages, index)
+    
+    #we're all done!
+    return processed_pages
 
   def run(self, url):
-    processed_pages = []
-    self.parse_page(url, processed_pages)
+    start_time = time.time()
 
-    # copy custom assets to dist folder
-    shutil.copyfile("loconotion.css", self.dist_folder / "loconotion.css");
-    shutil.copyfile("loconotion.js", self.dist_folder / "loconotion.js");
+    total_processed_pages = self.parse_page(url)
+
+    elapsed_time = time.time() - start_time
+    formatted_time = '{:02d}:{:02d}:{:02d}'.format(int(elapsed_time // 3600), int(elapsed_time % 3600 // 60), int(elapsed_time % 60))
+    log.info(f'Finished!\nヽ( ・‿・)ﾉ Processed {len(total_processed_pages)} pages in {formatted_time}')
 
 parser = argparse.ArgumentParser(description='Generate static websites from Notion.so pages')
 parser.add_argument('target', help='The config file containing the site properties, or the url of the Notion.so page to generate the site from')
@@ -425,7 +460,7 @@ if __name__ == '__main__':
       if Path(args.target).is_file():
         with open(args.target) as f:
           parsed_config = toml.loads(f.read())
-          log.info("Initialising parser with configuration file")
+          log.info(f"Initialising parser with configuration file: {parsed_config}")
           Parser(parsed_config)
       else:
         log.critical(f"Config file {args.target} does not exists")
