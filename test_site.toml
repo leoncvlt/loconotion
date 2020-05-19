@@ -16,7 +16,8 @@ page = "https://www.notion.so/A-Notion-Page-03c403f4fdc94cc1b315b9469a8950ef"
 
   ## custom site fonts ##
   # you can specify the name of a google font to use on the site, use the font embed name
-  # (if in doubt select a style on fonts.google.com and navigate to the "embed" tag to check the name under CSS rules)
+  # (if in doubt select a style on fonts.google.com and navigate to the "embed" tag to check the name under 
+  # CSS rules)
   # keys controls the font of the following elements:
     # site: changes the font for the whole page (apart from code blocks) but the following settings override it
     # navbar: site breadcrumbs on the top-left of the page
@@ -58,17 +59,18 @@ page = "https://www.notion.so/A-Notion-Page-03c403f4fdc94cc1b315b9469a8950ef"
 #
 # e.g the following settings will only apply to this parsed page:
 # https://www.notion.so/d2fa06f244e64f66880bb0491f58223d
-[d2fa06f244e64f66880bb0491f58223d]
-  ## custom slugs ##
-  # inside page settings, you can change the url that page will map to with the 'slug' key
-  # e.g. page "/d2fa06f244e64f66880bb0491f58223d" will now map to "/list"
-  slug = "list"
+[pages]
+  [pages.d2fa06f244e64f66880bb0491f58223d]
+    ## custom slugs ##
+    # inside page settings, you can change the url that page will map to with the 'slug' key
+    # e.g. page "/d2fa06f244e64f66880bb0491f58223d" will now map to "/list"
+    slug = "list"
 
-  [[d2fa06f244e64f66880bb0491f58223d.meta]] 
-  # change the description meta tag for this page only
-  name = "description"
-  content = "A fullscreen list database page, now with a pretty slug"
+    [[pages.d2fa06f244e64f66880bb0491f58223d.meta]] 
+    # change the description meta tag for this page only
+    name = "description"
+    content = "A fullscreen list database page, now with a pretty slug"
 
-  [d2fa06f244e64f66880bb0491f58223d.fonts]
-  # change the title font for this page only
-  title = 'Nunito' 
+    [pages.d2fa06f244e64f66880bb0491f58223d.fonts]
+    # change the title font for this page only
+    title = 'Nunito' 

@@ -10,6 +10,7 @@ import glob
 import mimetypes
 from rich.logging import RichHandler
 from rich.progress import Progress
+import enlighten
 import urllib.parse
 import hashlib
 import toml
@@ -115,15 +116,21 @@ class Parser():
       del site_config['slug']
 
     # find a table in the configuration file whose key contains the passed token string
-    matching_page_config = [value for key, value in self.config.items() if key.lower() in token]
-    if (matching_page_config):
-      if (len(matching_page_config) > 1):
+    site_pages_config = self.config.get("pages", {})
+    matching_pages_config = [value for key, value in site_pages_config.items() if key.lower() in token]
+    if (matching_pages_config):
+      if (len(matching_pages_config) > 1):
         log.error(f"multiple matching page config tokens found for {token} in configuration file. Make sure pages urls / slugs are unique")
         return site_config
       else:
         # if found, merge it on top of the global site configuration table
         # log.debug(f"Config table found for page with token {token}")
-        return {**site_config, **matching_page_config[0]}
+        matching_page_config = matching_pages_config[0]
+        if (type(matching_page_config) is dict):
+          return {**site_config, **matching_page_config}
+        else:
+          log.error(f"Matching page configuration for {url} was not a dict: {matching_page_config} - something went wrong")
+          return site_config
     else:
       # log.debug(f"No config table found for page token {token}, using global site config table")
       return site_config
@@ -148,13 +155,16 @@ class Parser():
       return path + (".html" if extension else "")
 
   def cache_file(self, url, filename = None):
+    show_progress_bars = False
     # stringify the url in case it's a Path object
     url = str(url)
 
-    # if no filename specificed, generate an hashed id based the url,
+    # if no filename specificed, generate an hashed id based the query-less url,
     # so we avoid re-downloading / caching files we already have
     if (not filename): 
-      filename = hashlib.sha1(str.encode(url)).hexdigest();
+      parsed_url = urllib.parse.urlparse(url)
+      queryless_url = parsed_url.netloc + parsed_url.path
+      filename = hashlib.sha1(str.encode(queryless_url)).hexdigest();
     destination = self.dist_folder / filename
 
     # check if there are any files matching the filename, ignoring extension
@@ -168,7 +178,7 @@ class Parser():
         session = requests.Session()
         session.trust_env = False
         log.info(f"Downloading '{url}'")
-        response = session.get(url)
+        response = session.get(url, stream=True)
 
         # if the filename does not have an extension at this point,
         # try to infer it from the url, and if not possible, 
@@ -176,13 +186,23 @@ class Parser():
         if (not destination.suffix):
           file_extension = Path(urllib.parse.urlparse(url).path).suffix
           if (not file_extension):
-            content_type = response.headers['content-type'] 
+            content_type = response.headers.get('content-type') 
             file_extension = mimetypes.guess_extension(content_type)
           destination = destination.with_suffix(file_extension)
 
         Path(destination).parent.mkdir(parents=True, exist_ok=True)
         with open(destination, "wb") as f:
-          f.write(response.content)
+          total = response.headers.get('content-length')
+          if total is None or not show_progress_bars:
+            f.write(response.content)
+          else:
+            progress_manager = enlighten.get_manager()
+            download_progress = progress_manager.counter(total=int(total)//1024, desc='Downloading', unit='mb')
+            for data in response.iter_content(chunk_size=1024):
+              f.write(data)
+              download_progress.update()
+            progress_manager.stop()
+          
         return destination.relative_to(self.dist_folder)
       # if not, check if it's a local file, and copy it to the dist folder
       else:
@@ -255,7 +275,9 @@ class Parser():
             try:
               WebDriverWait(self.driver, 10).until(toggle_block_has_opened(toggle_block))
             except TimeoutException as ex:
-              log.warning("Timeout waiting for toggle block to open")   
+              log.warning("Timeout waiting for toggle block to open. Likely it's already open, but doesn't hurt to check.")   
+            except Exception as ex:
+              log.error("Something went wrong with selenium while trying to open a toggle block")
             opened_toggles.append(toggle_block) 
       # after all toggles have been opened, check the page again to see if
       # any toggle block had nested toggle blocks inside them
@@ -310,7 +332,7 @@ class Parser():
           if (img['src'].startswith('/')):
             # notion's images urls are in a weird format, need to sanitize them
             img_src = 'https://www.notion.so' + img['src'].split("notion.so")[-1].replace("notion.so", "").split("?")[0]
-            img_src = urllib.parse.unquote(img_src)
+            # img_src = urllib.parse.unquote(img_src)
 
           cached_image = self.cache_file(img_src)
           img['src'] = cached_image
@@ -481,7 +503,7 @@ if __name__ == '__main__':
         else:
           log.critical(f"{args.target} is not a notion.so page")
       except requests.ConnectionError as exception:
-        log.critical(f"{args.target} does not seem to be an existing web page")
+        log.critical(f"Connection error")
     else:
       if Path(args.target).is_file():
         with open(args.target) as f:
