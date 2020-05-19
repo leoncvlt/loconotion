@@ -80,7 +80,7 @@ class Parser():
 
     # set the output folder based on the site name
     self.dist_folder = Path(config.get("output", Path("dist") / site_name))
-    log.info(f"Setting output path to {self.dist_folder}")
+    log.info(f"Setting output path to '{self.dist_folder}'")
 
     # check if the argument to clean the dist folder was passed
     if (self.args.get("clean", False)):
@@ -130,7 +130,7 @@ class Parser():
     # first check if the url has a custom slug configured in the config file
     custom_slug = self.get_page_config(url).get("slug", None)
     if custom_slug:
-      log.debug(f"Custom slug found for url {url}: {custom_slug}")
+      log.debug(f"Custom slug found for url '{url}': '{custom_slug}'")
       return custom_slug.strip("/") + (".html" if extension else "")
     else:
       # if not, clean up the existing slug
@@ -220,8 +220,8 @@ class Parser():
     if (not index):
       index = url;
 
-    log.info(f'Parsing page {url}')
-    log.debug(f'Using page config: {self.get_page_config(url)}')
+    log.info(f"Parsing page '{url}'")
+    log.debug(f"Using page config: {self.get_page_config(url)}")
     self.driver.get(url)
 
     # if ("This content does not exist" in self.driver.page_source):
@@ -256,7 +256,7 @@ class Parser():
             try:
               WebDriverWait(self.driver, 10).until(toggle_block_has_opened(toggle_block))
             except TimeoutException as ex:
-              log.warning("Timeout waiting for toggle block to open. Likely it's already open, but doesn't hurt to check.")   
+              log.warning("Timeout waiting for toggle block to open. Likely it's already open, but doesn't hurt to check.")
             except Exception as ex:
               log.error("Something went wrong with selenium while trying to open a toggle block")
             opened_toggles.append(toggle_block) 
@@ -311,9 +311,10 @@ class Parser():
 
           # if the path starts with /, it's one of notion's predefined images
           if (img['src'].startswith('/')):
-            # notion's images urls are in a weird format, need to sanitize them
+            # notion's own default images urls are in a weird format, need to sanitize them
             img_src = 'https://www.notion.so' + img['src'].split("notion.so")[-1].replace("notion.so", "").split("?")[0]
-            # img_src = urllib.parse.unquote(img_src)
+            if (not '.amazonaws' in img_src):
+              img_src = urllib.parse.unquote(img_src)
 
           cached_image = self.cache_file(img_src)
           img['src'] = cached_image
@@ -433,7 +434,7 @@ class Parser():
     if (html_file in processed_pages.values()):
       log.error(f"Found duplicate pages with slug '{html_file}' - previous one will be overwritten." +
       "make sure that your notion pages names or custom slugs in the configuration files are unique")
-    log.info(f"Exporting page {url} as {html_file}")
+    log.info(f"Exporting page '{url}' as '{html_file}'")
     with open(self.dist_folder / html_file, "wb") as f:
       f.write(html_str.encode('utf-8').strip())
     processed_pages[url] = html_file
@@ -453,7 +454,7 @@ class Parser():
     total_processed_pages = self.parse_page(url)
     elapsed_time = time.time() - start_time
     formatted_time = '{:02d}:{:02d}:{:02d}'.format(int(elapsed_time // 3600), int(elapsed_time % 3600 // 60), int(elapsed_time % 60))
-    log.info(f'Finished!\nヽ( ・‿・)ﾉ Processed {len(total_processed_pages)} pages in {formatted_time}')
+    log.info(f'Finished!\n\n\tヽ( ・‿・)ﾉ Processed {len(total_processed_pages)} pages in {formatted_time}')
 
 if __name__ == '__main__':
   # set up argument parser
