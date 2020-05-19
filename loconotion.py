@@ -1,6 +1,5 @@
 import os
 import sys
-import requests
 import shutil
 import time
 import uuid
@@ -8,13 +7,10 @@ import logging
 import re
 import glob
 import mimetypes
-from rich.logging import RichHandler
-from rich.progress import Progress
-import enlighten
 import urllib.parse
 import hashlib
-import toml
 import argparse
+from pathlib import Path
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -22,20 +18,14 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait 
-
 from bs4 import BeautifulSoup
-from pathlib import Path
+
+import requests
+import toml
 import cssutils
 cssutils.log.setLevel(logging.CRITICAL) # removes warning logs from cssutils
 
-def setup_logger(name):
-  rich_handler = RichHandler()
-  logger = logging.getLogger(name)
-  logger.addHandler(rich_handler)
-  logger.setLevel(logging.INFO)
-  return logger
-
-log = setup_logger("loconotion-logger")
+log = logging.getLogger(__name__)
 
 class notion_page_loaded(object):
   """An expectation for checking that a notion page has loaded.
@@ -76,8 +66,9 @@ class toggle_block_has_opened(object):
       return False
 
 class Parser():
-  def __init__(self, config = {}):
+  def __init__(self, config = {}, args = {}):
     self.config = config
+    self.args = args
     url = self.config.get("page", None)
     if not url:
       log.critical("No initial page url specified. If passing a configuration file," +
@@ -92,7 +83,7 @@ class Parser():
     log.info(f"Setting output path to {self.dist_folder}")
 
     # check if the argument to clean the dist folder was passed
-    if (self.config.get("--clean", False)):
+    if (self.args.get("clean", False)):
       try:
         shutil.rmtree(self.dist_folder)
         log.info(f"Removing previously cached files in '{self.dist_folder}'")
@@ -155,7 +146,6 @@ class Parser():
       return path + (".html" if extension else "")
 
   def cache_file(self, url, filename = None):
-    show_progress_bars = False
     # stringify the url in case it's a Path object
     url = str(url)
 
@@ -178,7 +168,7 @@ class Parser():
         session = requests.Session()
         session.trust_env = False
         log.info(f"Downloading '{url}'")
-        response = session.get(url, stream=True)
+        response = session.get(url)
 
         # if the filename does not have an extension at this point,
         # try to infer it from the url, and if not possible, 
@@ -192,16 +182,7 @@ class Parser():
 
         Path(destination).parent.mkdir(parents=True, exist_ok=True)
         with open(destination, "wb") as f:
-          total = response.headers.get('content-length')
-          if total is None or not show_progress_bars:
-            f.write(response.content)
-          else:
-            progress_manager = enlighten.get_manager()
-            download_progress = progress_manager.counter(total=int(total)//1024, desc='Downloading', unit='mb')
-            for data in response.iter_content(chunk_size=1024):
-              f.write(data)
-              download_progress.update()
-            progress_manager.stop()
+          f.write(response.content)        
           
         return destination.relative_to(self.dist_folder)
       # if not, check if it's a local file, and copy it to the dist folder
@@ -469,37 +450,63 @@ class Parser():
 
   def run(self, url):
     start_time = time.time()
-
     total_processed_pages = self.parse_page(url)
-
     elapsed_time = time.time() - start_time
     formatted_time = '{:02d}:{:02d}:{:02d}'.format(int(elapsed_time // 3600), int(elapsed_time % 3600 // 60), int(elapsed_time % 60))
     log.info(f'Finished!\nヽ( ・‿・)ﾉ Processed {len(total_processed_pages)} pages in {formatted_time}')
 
-parser = argparse.ArgumentParser(description='Generate static websites from Notion.so pages')
-parser.add_argument('target', help='The config file containing the site properties, or the url of the Notion.so page to generate the site from')
-parser.add_argument('--clean', action='store_true', default=False, help='Delete all previously cached files for the site before generating it')
-parser.add_argument("-v", "--verbose", action="store_true", help="Shows way more exciting facts in the output")
-args = parser.parse_args()
-
-
-
 if __name__ == '__main__':
-  if args.verbose:
-    log.setLevel(logging.DEBUG)
+  # set up argument parser
+  parser = argparse.ArgumentParser(description='Generate static websites from Notion.so pages')
+  parser.add_argument('target', help='The config file containing the site properties, or the url of the Notion.so page to generate the site from')
+  parser.add_argument('--clean', action='store_true', default=False, help='Delete all previously cached files for the site before generating it')
+  parser.add_argument("-v", "--verbose", action="store_true", help="Shows way more exciting facts in the output")
+  args = parser.parse_args()
 
-  def extend_configuration_from_args(config):
-    if (args.clean): config['--clean'] = True
-    return config
+  # set up some pretty logs
+  import colorama
+  import copy
 
+  LOG_COLORS = {
+    logging.DEBUG: colorama.Fore.GREEN,
+    logging.INFO: colorama.Fore.BLUE,
+    logging.WARNING: colorama.Fore.YELLOW,
+    logging.ERROR: colorama.Fore.RED,
+    logging.CRITICAL: colorama.Back.RED
+  }
+
+  class ColorFormatter(logging.Formatter):
+    def format(self, record, *args, **kwargs):
+      # if the corresponding logger has children, they may receive modified
+      # record, so we want to keep it intact
+      new_record = copy.copy(record)
+      if new_record.levelno in LOG_COLORS:
+        new_record.levelname = "{color_begin}{level}{color_end}".format(
+            level=new_record.levelname,
+            color_begin=LOG_COLORS[new_record.levelno],
+            color_end=colorama.Style.RESET_ALL,
+        )
+      return super(ColorFormatter, self).format(new_record, *args, **kwargs)
+
+  log_screen_handler = logging.StreamHandler(stream=sys.stdout)
+  log_screen_handler.setFormatter(ColorFormatter(fmt='%(asctime)s %(levelname)-8s %(message)s', 
+    datefmt="{color_begin}[%H:%M:%S]{color_end}".format(
+      color_begin=colorama.Style.DIM,
+      color_end=colorama.Style.RESET_ALL
+    )))
+  log = logging.getLogger(__name__)
+  log.setLevel(logging.INFO if not args.verbose else logging.DEBUG)
+  log.addHandler(log_screen_handler)
+
+  # parse the provided arguments
   try:
     if urllib.parse.urlparse(args.target).scheme:
       try:
         response = requests.get(args.target)
         if ("notion.so" in args.target):
           log.info("Initialising parser with simple page url")
-          config = extend_configuration_from_args({ "page" : args.target })
-          Parser(config)
+          config = { "page" : args.target }
+          Parser(config = config, args = vars(args))
         else:
           log.critical(f"{args.target} is not a notion.so page")
       except requests.ConnectionError as exception:
@@ -508,10 +515,9 @@ if __name__ == '__main__':
       if Path(args.target).is_file():
         with open(args.target) as f:
           parsed_config = toml.loads(f.read())
-          parsed_config = extend_configuration_from_args(parsed_config)
           log.info(f"Initialising parser with configuration file")
           log.debug(parsed_config)
-          Parser(parsed_config)
+          Parser(config = parsed_config, args = vars(args))
       else:
         log.critical(f"Config file {args.target} does not exists")
   except FileNotFoundError as e:
