@@ -154,6 +154,11 @@ class Parser():
     if (not filename): 
       parsed_url = urllib.parse.urlparse(url)
       queryless_url = parsed_url.netloc + parsed_url.path
+      query_params = urllib.parse.parse_qs(parsed_url.query)
+      # if any of the query params contains a size parameters store it in the has
+      # so we can download other higher-resolution versions if needed
+      if ("width" in query_params.keys()):
+        queryless_url = queryless_url + f"?width={query_params['width']}"
       filename = hashlib.sha1(str.encode(queryless_url)).hexdigest();
     destination = self.dist_folder / filename
 
@@ -308,13 +313,13 @@ class Parser():
       if img.has_attr('src'):
         if (cache_images and not 'data:image' in img['src']):
           img_src = img['src']
-
           # if the path starts with /, it's one of notion's predefined images
           if (img['src'].startswith('/')):
+            img_src = "https://www.notion.so" + img['src']
             # notion's own default images urls are in a weird format, need to sanitize them
-            img_src = 'https://www.notion.so' + img['src'].split("notion.so")[-1].replace("notion.so", "").split("?")[0]
-            if (not '.amazonaws' in img_src):
-              img_src = urllib.parse.unquote(img_src)
+            # img_src = 'https://www.notion.so' + img['src'].split("notion.so")[-1].replace("notion.so", "").split("?")[0]
+            # if (not '.amazonaws' in img_src):
+              # img_src = urllib.parse.unquote(img_src)
 
           cached_image = self.cache_file(img_src)
           img['src'] = cached_image
@@ -440,7 +445,7 @@ class Parser():
     processed_pages[url] = html_file
 
     # parse sub-pages
-    if (sub_pages):
+    if (sub_pages and not self.args.get("single_page", False)):
       if (processed_pages): log.debug(f"Pages processed so far: {processed_pages}")
       for sub_page in sub_pages:
         if not sub_page in processed_pages.keys():
@@ -462,11 +467,11 @@ if __name__ == '__main__':
   parser.add_argument('target', help='The config file containing the site properties, or the url of the Notion.so page to generate the site from')
   parser.add_argument('--clean', action='store_true', default=False, help='Delete all previously cached files for the site before generating it')
   parser.add_argument("-v", "--verbose", action="store_true", help="Shows way more exciting facts in the output")
+  parser.add_argument("--single-page", action="store_true", help="Don't parse sub-pages")
   args = parser.parse_args()
 
   # set up some pretty logs
-  import colorama
-  import copy
+  import colorama, copy
 
   LOG_COLORS = {
     logging.DEBUG: colorama.Fore.GREEN,
