@@ -22,6 +22,7 @@ try:
   from selenium.common.exceptions import TimeoutException, NoSuchElementException
   from selenium.webdriver.support import expected_conditions as EC
   from selenium.webdriver.common.by import By
+  from selenium.webdriver.common.action_chains import ActionChains
   from selenium.webdriver.support.ui import WebDriverWait 
   from bs4 import BeautifulSoup
   import requests
@@ -378,6 +379,24 @@ class Parser():
         toggle_button['class'] = toggle_block.get('class', []) + ['loconotion-toggle-button']
         toggle_content['class'] = toggle_content.get('class', []) + ['loconotion-toggle-content']
         toggle_content.attrs['loconotion-toggle-id'] = toggle_button.attrs['loconotion-toggle-id'] = toggle_id
+
+    # if there are any table views in the page, add links to the title rows
+    for table_view in soup.findAll('div', {'class':'notion-table-view'}):
+      for table_row in table_view.findAll('div', {'class':'notion-collection-item'}):
+        # for each row, hover the mouse over it to make the open button appear,
+        # then grab its href and wrap the table row's name into a link
+        table_row_block_id = table_row['data-block-id']
+        table_row_hover_target = self.driver.find_element_by_css_selector(f"div[data-block-id='{table_row_block_id}'] > div > div")
+        ActionChains(self.driver).move_to_element(table_row_hover_target).perform()
+        try:
+          WebDriverWait(self.driver, 3).until(EC.presence_of_element_located((By.CSS_SELECTOR, f"div[data-block-id='{table_row_block_id}'] > div > a")))
+        except TimeoutException as ex:
+          log.error("Timeout")
+        table_row_href = self.driver.find_element_by_css_selector(f"div[data-block-id='{table_row_block_id}'] > div > a").get_attribute('href')
+        row_target_span = table_row.find("span")
+        row_link_wrapper = soup.new_tag('a', attrs={'href': table_row_href, 'style':"cursor: pointer;"})
+        row_target_span.wrap(row_link_wrapper)
+
 
     # embed custom google font(s)
     fonts_selectors = {
