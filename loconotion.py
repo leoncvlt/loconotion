@@ -13,9 +13,10 @@ import hashlib
 import argparse
 from pathlib import Path
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("loconotion")
 
 try:
+  import chromedriver_autoinstaller
   from selenium import webdriver
   from selenium.webdriver.chrome.options import Options
   from selenium.common.exceptions import TimeoutException, NoSuchElementException
@@ -23,7 +24,6 @@ try:
   from selenium.webdriver.common.by import By
   from selenium.webdriver.support.ui import WebDriverWait 
   from bs4 import BeautifulSoup
-
   import requests
   import toml
   import cssutils
@@ -214,23 +214,20 @@ class Parser():
       return cached_file
 
   def init_chromedriver(self):
-    exec_extension = ".exe" if platform.system() == "Windows" else ""
-    chromedriver_path = Path.cwd() / self.args.get("chromedriver")
-    
-    # add the .exe extension on Windows if omitted
-    if (not chromedriver_path.suffix):
-      chromedriver_path = chromedriver_path.with_suffix(exec_extension)
+    chromedriver_path = self.args.get("chromedriver")
+    if (not chromedriver_path):
+      try:
+        chromedriver_path = chromedriver_autoinstaller.install()
+      except Exception as exception:
+        log.critical(f"Failed to install the built-in chromedriver: {exception}\n" + 
+        "download the correct version for your system at https://chromedriver.chromium.org/downloads" + 
+        "and use the --chromedriver argument to point to the chromedriver executable")
+        sys.exit()
 
-    # check the chromedriver executable exists
-    if (not chromedriver_path.is_file()):
-      log.critical(f"Chromedriver not found at {chromedriver_path}." + 
-      " Download the correct distribution at https://chromedriver.chromium.org/downloads")
-      sys.exit()
-
+    log.info(f"Initialising chromedriver at {chromedriver_path}")
     logs_path = (Path.cwd() / "logs" / "webdrive.log")
     logs_path.parent.mkdir(parents=True, exist_ok=True)
 
-    log.info("Initialising chrome driver")
     chrome_options = Options()  
     chrome_options.add_argument("--headless")  
     chrome_options.add_argument("window-size=1920,1080")
@@ -441,10 +438,10 @@ class Parser():
     injects_custom_tags("body")
 
     # inject loconotion's custom stylesheet and script
-    loconotion_custom_css = self.cache_file("loconotion.css")
+    loconotion_custom_css = self.cache_file(Path("bundles/loconotion.css"))
     custom_css = soup.new_tag("link", rel="stylesheet", href=str(loconotion_custom_css))
     soup.head.insert(-1, custom_css)
-    loconotion_custom_js = self.cache_file("loconotion.js")
+    loconotion_custom_js = self.cache_file(Path("bundles/loconotion.js"))
     custom_script = soup.new_tag("script", type="text/javascript", src=str(loconotion_custom_js))
     soup.body.insert(-1, custom_script)
 
@@ -499,17 +496,18 @@ if __name__ == '__main__':
   # set up argument parser
   parser = argparse.ArgumentParser(description='Generate static websites from Notion.so pages')
   parser.add_argument('target', help='The config file containing the site properties, or the url of the Notion.so page to generate the site from')
-  parser.add_argument('--chromedriver', default='bin/chromedriver', help='Path to the chromedriver executable')
+  parser.add_argument('--chromedriver', help='Use a specific chromedriver executable instead of the auto-installing one')
   parser.add_argument("--single-page", action="store_true", default=False, help="Only parse the first page, then stop")
   parser.add_argument('--clean', action='store_true', default=False, help='Delete all previously cached files for the site before generating it')
   parser.add_argument("-v", "--verbose", action="store_true", help="Shows way more exciting facts in the output")
   args = parser.parse_args()
 
   # set up some pretty logs
-  log = logging.getLogger(__name__)
+  log = logging.getLogger("loconotion")
   log.setLevel(logging.INFO if not args.verbose else logging.DEBUG)
   log_screen_handler = logging.StreamHandler(stream=sys.stdout)
   log.addHandler(log_screen_handler)
+  log.propagate = False
   try:
     import colorama, copy
 

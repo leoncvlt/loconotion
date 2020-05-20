@@ -73,7 +73,8 @@ for (let i = 0; i < anchorLinks.length; i++) {
     id.slice(0, 8) + "-" + id.slice(8, 12) + "-" + id.slice(12, 16) + "-" + id.slice(16, 20) + "-" + id.slice(20);
   anchorLink.addEventListener("click", (e) => {
     e.preventDefault();
-    document.querySelector(targetBlockId).scrollIntoView({
+    console.log(targetBlockId);
+    document.querySelector(`div[data-block-id='${targetBlockId}']`).scrollIntoView({
       behavior: "smooth",
       block: "start",
     });
