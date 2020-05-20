@@ -113,6 +113,5 @@ dmypy.json
 env
 dist/*
 test/*
-debug.log
-webdrive.log
+logs/*
 *.bat

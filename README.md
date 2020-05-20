@@ -8,6 +8,7 @@ Some services like Super, HostingPotion, HostNotion and Fruition try to work aro
 - **Not free** - Super, HostingPotion and HostNotion all take a monthly fee since they manage all the "hacky bits" for you; Fruition is open-source but any domain with a decent amount of daily visit will soon clash against CloudFlare's free tier limitations, and force you to upgrade to the 5$ or more plan (plus you need to setup Cloudflare yourself)
 - **Slow-ish** - As the page is still hosted on Notion, it comes bundled with all their analytics, editing / collaboration javascript, vendors css, and more bloat which causes the page to load at speeds that are not exactly appropriate for a simple blog / website. Running [this](https://www.notion.so/The-perfect-It-s-Always-Sunny-in-Philadelphia-episode-d08aaec2b24946408e8be0e9f2ae857e) example page on Google's [PageSpeed Insights](https://developers.google.com/speed/pagespeed/insights/) scores a measly **24 - 66** on mobile / desktop.
 - **Ugly URLs** - While the services above enable the use of custom domains, the URLs for individual pages are stuck with the long, ugly, original Notion URL (apart from Fruition - they got custom URLs figured out, altough you will always see the original URL flashing for an instant when the page is loaded).
+- **Notion Free Account Limitations** - Recently Notion introduced a change to its pricing model where public pages can't be set to be indexed by search engines on a free account (but they also removed the blocks count limitations, which is a good trade-off if you ask me)
 
 Loconotion approaches this a bit differently. It lets Notion render the page, then scrapes it and saves a static version of the page to disk. This offers the following benefits:
 - Strips out all the unnecessary bloat, like Notion's analytics, vendors scripts / styles, and javascript left in to enable collaboration.
@@ -28,10 +29,15 @@ Bear in mind that as we are effectively parsing a static version of the page, th
 
 Everything else should be fine. Loconotion rebuilds the logic for toggle boxes and embeds so they still work; plus it defines some additional CSS rules to enable mobile responsiveness across the whole site (in some cases looking even better than Notion's defaults - wasn't exactly thought for mobile).
 
+### But Notion already had an html export function?
+It does, but I wasn't really happy with the styling - the pages looked a bit uglier than what they look like on a live Notion page. Plus, it doesn't support all the cool customization features outlined above!
+
 ## Installation & Requirements
 `pip install -r requirements.txt`
 
 This script uses [ChromeDriver](chromedriver.chromium.org) to automate the Google Chrome browser - therefore Google Chrome needs to be installed in order to work.
+
+The script comes bundled with the default windows chromedriver executable. On Max / Linux, download the right distribution for you from https://chromedriver.chromium.org/downloads and place the executable in this folder. Alternatively, use the `--chromedriver` argument to specify its path at runtime
 
 ## Simple Usage
 `python loconotion.py https://www.notion.so/The-perfect-It-s-Always-Sunny-in-Philadelphia-episode-d08aaec2b24946408e8be0e9f2ae857e`
@@ -44,15 +50,24 @@ You can fully configure Loconotion to your needs by passing a [.toml](https://gi
 
 Here's what a full configuration would look like, alongside with explanations for each parameter.
 ```toml
+## Loconotion Site Configuration File ##
+# full .toml  configuration example file to showcase all of Loconotion's available settings
+# check out https://github.com/toml-lang/toml for more info on the toml format
+
+# name of the folder that the site will be generated in
 name = "Notion Test Site"
 # the notion.so page to being parsing from. This page will become the index.html
 # of the generated site, and loconotation will parse all sub-pages present on the page.
 page = "https://www.notion.so/A-Notion-Page-03c403f4fdc94cc1b315b9469a8950ef"
 
-# this site table defines override settings for the whole site
+## Global Site Settings ##
+# this [site] table defines override settings for the whole site
 # later on we will see how to define settings for a single page
 [site]
-  ## custom meta tags ##
+  ## Custom Meta Tags ##
+  # defined as an array of tables (double square brackets)
+  # each key in the table maps to an atttribute in the tag
+  # the following adds the tag <meta name="title" content="Loconotion Test Site"/>
   [[site.meta]]
   name = "title"
   content = "Loconotion Test Site"
@@ -60,10 +75,10 @@ page = "https://www.notion.so/A-Notion-Page-03c403f4fdc94cc1b315b9469a8950ef"
   name = "description"
   content = "A static site generated from a Notion.so page using Loconotion"
 
-  ## custom site fonts ##
-  # you can specify the name of a google font to use on the site, use the font embed name
-  # (if in doubt select a style on fonts.google.com and navigate to the "embed" tag to check the name under CSS rules)
-  # keys controls the font of the following elements:
+  ## Custom Fonts ##
+  # you can specify the name of a google font to use on the site - use the font embed name
+  # if in doubt select a style on fonts.google.com and navigate to the "embed" tag to check the name under CSS rules
+  # the table keys controls the font of the following elements:
     # site: changes the font for the whole page (apart from code blocks) but the following settings override it
     # navbar: site breadcrumbs on the top-left of the page
     # title: page title (under the icon)
@@ -73,19 +88,19 @@ page = "https://www.notion.so/A-Notion-Page-03c403f4fdc94cc1b315b9469a8950ef"
     # body: non-heading text on the page
     # code: text inside code blocks
   [site.fonts]
-  site = 'Roboto'
+  site = 'Lato'
   navbar = ''
   title = 'Montserrat'
   h1 = 'Montserrat'
   h2 = 'Montserrat'
-  h3 = ''
+  h3 = 'Montserrat'
   body = ''
   code = ''
 
-  ## custom element injection ##
-  # 'head' or 'body' to set where the element will be injected
-  # the next dotted key represents the tag to inject, with the table values being the the tag attributes
-  # e.g. the following injects <link href="favicon-16x16.png" rel="icon" sizes="16x16" type="image/png"/> in the <head>
+  ## Custom Element Injection ##
+  # defined as an array of tables [[site.inject]], followed by 'head' or 'body' to set where the injection point,
+  # followed by name of the tag to inject. Each key in the table maps to an atttribute in the tag
+  # the following injects <link href="favicon-16x16.png" rel="icon" sizes="16x16" type="image/png"/> in the <head>
   [[site.inject.head.link]]
   rel="icon" 
   sizes="16x16"
@@ -97,33 +112,37 @@ page = "https://www.notion.so/A-Notion-Page-03c403f4fdc94cc1b315b9469a8950ef"
   type="text/javascript"
   src="/example/custom-script.js"
 
-## individual page settings ##
-# while the [site] table applies the settings to all parse pages, 
-# it's possible to override a single page's setting by defining
-# a table named after the page url or part of it.
-#
-# e.g the following settings will only apply to this parsed page:
-# https://www.notion.so/d2fa06f244e64f66880bb0491f58223d
-[d2fa06f244e64f66880bb0491f58223d]
-  ## custom slugs ##
-  # inside page settings, you can change the url that page will map to with the 'slug' key
-  # e.g. page "/d2fa06f244e64f66880bb0491f58223d" will now map to "/list"
-  slug = "list"
+## Individual Page Settings ##
+# the [pages] table defines override settings for individual pages, by defining a sub-table named after the page url 
+# (or part of the url, but careful into not use a string that appears in multiple page urls)
+[pages]
+  # the following settings will only apply to this page: https://www.notion.so/d2fa06f244e64f66880bb0491f58223d
+  [pages.d2fa06f244e64f66880bb0491f58223d]
+    ## custom slugs ##
+    # inside page settings, you can change the url that page will map to with the 'slug' key
+    # e.g. page "/d2fa06f244e64f66880bb0491f58223d" will now map to "/list"
+    slug = "list"
 
-  [[d2fa06f244e64f66880bb0491f58223d.meta]] 
-  # change the description meta tag for this page only
-  name = "description"
-  content = "A fullscreen list database page, now with a pretty slug"
+    # change the description meta tag for this page only
+    [[pages.d2fa06f244e64f66880bb0491f58223d.meta]] 
+    name = "description"
+    content = "A fullscreen list database page, now with a pretty slug"
 
-  [d2fa06f244e64f66880bb0491f58223d.fonts]
-  # change the title font for this page only
-  title = 'Nunito' 
+    # change the title font for this page only
+    [pages.d2fa06f244e64f66880bb0491f58223d.fonts]
+    title = 'Nunito' 
+
+  # for smaller sets of settings you can use inline notation
+  # 2483a3a5c3fd445980c1adc8e550b552.slug = "gallery"
+  # 2604ce45890645c79f67d92833083fee.slug = "table"
+  # a28dba2e7a67448da52f2cd2c641407b.slug = "board"
 ```
 
-On top of this, the script can take a few extra arguments:
+On top of this, the script can take this optional arguments:
 ```
   --clean        Delete all previously cached files for the site before generating it
   -v, --verbose  Shows way more exciting facts in the output
+  --single-page  Don't parse sub-pages
 ```
 
 ## Roadmap / Features wishlist

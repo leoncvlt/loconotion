@@ -1,4 +1,5 @@
 import os
+import platform
 import sys
 import shutil
 import time
@@ -12,20 +13,24 @@ import hashlib
 import argparse
 from pathlib import Path
 
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait 
-from bs4 import BeautifulSoup
-
-import requests
-import toml
-import cssutils
-cssutils.log.setLevel(logging.CRITICAL) # removes warning logs from cssutils
-
 log = logging.getLogger(__name__)
+
+try:
+  from selenium import webdriver
+  from selenium.webdriver.chrome.options import Options
+  from selenium.common.exceptions import TimeoutException, NoSuchElementException
+  from selenium.webdriver.support import expected_conditions as EC
+  from selenium.webdriver.common.by import By
+  from selenium.webdriver.support.ui import WebDriverWait 
+  from bs4 import BeautifulSoup
+
+  import requests
+  import toml
+  import cssutils
+  cssutils.log.setLevel(logging.CRITICAL) # removes warning logs from cssutils
+except ModuleNotFoundError as error:
+  log.critical(f"ModuleNotFoundError: {error}. have your installed the requirements?")
+  sys.exit()
 
 class notion_page_loaded(object):
   """An expectation for checking that a notion page has loaded.
@@ -167,29 +172,34 @@ class Parser():
     if not matching_file:
       # if url has a network scheme, download the file
       if "http" in urllib.parse.urlparse(url).scheme:
-        # Disabling proxy speeds up requests time
-        # https://stackoverflow.com/questions/45783655/first-https-request-takes-much-more-time-than-the-rest
-        # https://stackoverflow.com/questions/28521535/requests-how-to-disable-bypass-proxy
-        session = requests.Session()
-        session.trust_env = False
-        log.info(f"Downloading '{url}'")
-        response = session.get(url)
+        try:
+          # Disabling proxy speeds up requests time
+          # https://stackoverflow.com/questions/45783655/first-https-request-takes-much-more-time-than-the-rest
+          # https://stackoverflow.com/questions/28521535/requests-how-to-disable-bypass-proxy
+          session = requests.Session()
+          session.trust_env = False
+          log.info(f"Downloading '{url}'")
+          response = session.get(url)
 
-        # if the filename does not have an extension at this point,
-        # try to infer it from the url, and if not possible, 
-        # from the content-type header mimetype
-        if (not destination.suffix):
-          file_extension = Path(urllib.parse.urlparse(url).path).suffix
-          if (not file_extension):
-            content_type = response.headers.get('content-type') 
-            file_extension = mimetypes.guess_extension(content_type)
-          destination = destination.with_suffix(file_extension)
+          # if the filename does not have an extension at this point,
+          # try to infer it from the url, and if not possible, 
+          # from the content-type header mimetype
+          if (not destination.suffix):
+            file_extension = Path(urllib.parse.urlparse(url).path).suffix
+            if (not file_extension):
+              content_type = response.headers.get('content-type') 
+              if (content_type):
+                file_extension = mimetypes.guess_extension(content_types)
+            destination = destination.with_suffix(file_extension)
 
-        Path(destination).parent.mkdir(parents=True, exist_ok=True)
-        with open(destination, "wb") as f:
-          f.write(response.content)        
-          
-        return destination.relative_to(self.dist_folder)
+          Path(destination).parent.mkdir(parents=True, exist_ok=True)
+          with open(destination, "wb") as f:
+            f.write(response.content)        
+            
+          return destination.relative_to(self.dist_folder)
+        except Exception as error:
+          log.error(f"Error downloading file '{url}': {error}")
+          return url
       # if not, check if it's a local file, and copy it to the dist folder
       else:
         if Path(url).is_file():
@@ -202,10 +212,24 @@ class Parser():
       cached_file = Path(matching_file[0]).relative_to(self.dist_folder)
       log.debug(f"'{url}' was already downloaded")
       return cached_file
-    # if all fails, return the original url
-    return url
 
   def init_chromedriver(self):
+    exec_extension = ".exe" if platform.system() == "Windows" else ""
+    chromedriver_path = Path.cwd() / self.args.get("chromedriver")
+    
+    # add the .exe extension on Windows if omitted
+    if (not chromedriver_path.suffix):
+      chromedriver_path = chromedriver_path.with_suffix(exec_extension)
+
+    # check the chromedriver executable exists
+    if (not chromedriver_path.is_file()):
+      log.critical(f"Chromedriver not found at {chromedriver_path}." + 
+      " Download the correct distribution at https://chromedriver.chromium.org/downloads")
+      sys.exit()
+
+    logs_path = (Path.cwd() / "logs" / "webdrive.log")
+    logs_path.parent.mkdir(parents=True, exist_ok=True)
+
     log.info("Initialising chrome driver")
     chrome_options = Options()  
     chrome_options.add_argument("--headless")  
@@ -213,11 +237,11 @@ class Parser():
     chrome_options.add_argument("--log-level=3");
     chrome_options.add_argument("--silent");
     chrome_options.add_argument("--disable-logging")
-     # removes the 'DevTools listening' log message
+    #  removes the 'DevTools listening' log message
     chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
     return webdriver.Chrome(
-      executable_path=str(Path.cwd() / "bin" / "chromedriver.exe"), 
-      service_log_path=str(Path.cwd() / "webdrive.log"),
+      executable_path=str(chromedriver_path), 
+      service_log_path=str(logs_path),
       options=chrome_options)
 
   def parse_page(self, url, processed_pages = {}, index = None):
@@ -429,8 +453,18 @@ class Parser():
     for a in soup.findAll('a'):
       if a['href'].startswith('/'):
         sub_page_href = 'https://www.notion.so' + a['href']
+        # if the link is an anchor link, check if the page hasn't already been parsed
+        if ("#" in sub_page_href):
+          sub_page_href_tokens = sub_page_href.split("#")
+          sub_page_href = sub_page_href_tokens[0]
+          a['href'] = "#" + sub_page_href_tokens[-1]
+          a['class'] = a.get('class', []) + ['loconotion-anchor-link']
+          if (sub_page_href in processed_pages.keys() or sub_page_href in sub_pages):
+            log.debug(f"Original page for anchor link {sub_page_href} already parsed / pending parsing, skipping")
+            continue
+        else:
+          a['href'] = self.get_page_slug(sub_page_href) if sub_page_href != index else "index.html" 
         sub_pages.append(sub_page_href)
-        a['href'] = self.get_page_slug(sub_page_href) if sub_page_href != index else "index.html"
         log.debug(f"Found link to page {a['href']}")
 
     # exports the parsed page
@@ -446,7 +480,7 @@ class Parser():
 
     # parse sub-pages
     if (sub_pages and not self.args.get("single_page", False)):
-      if (processed_pages): log.debug(f"Pages processed so far: {processed_pages}")
+      if (processed_pages): log.debug(f"Pages processed so far: {len(processed_pages)}")
       for sub_page in sub_pages:
         if not sub_page in processed_pages.keys():
           self.parse_page(sub_page, processed_pages = processed_pages, index = index)
@@ -465,44 +499,48 @@ if __name__ == '__main__':
   # set up argument parser
   parser = argparse.ArgumentParser(description='Generate static websites from Notion.so pages')
   parser.add_argument('target', help='The config file containing the site properties, or the url of the Notion.so page to generate the site from')
+  parser.add_argument('--chromedriver', default='bin/chromedriver', help='Path to the chromedriver executable')
+  parser.add_argument("--single-page", action="store_true", default=False, help="Only parse the first page, then stop")
   parser.add_argument('--clean', action='store_true', default=False, help='Delete all previously cached files for the site before generating it')
   parser.add_argument("-v", "--verbose", action="store_true", help="Shows way more exciting facts in the output")
-  parser.add_argument("--single-page", action="store_true", help="Don't parse sub-pages")
   args = parser.parse_args()
 
   # set up some pretty logs
-  import colorama, copy
-
-  LOG_COLORS = {
-    logging.DEBUG: colorama.Fore.GREEN,
-    logging.INFO: colorama.Fore.BLUE,
-    logging.WARNING: colorama.Fore.YELLOW,
-    logging.ERROR: colorama.Fore.RED,
-    logging.CRITICAL: colorama.Back.RED
-  }
-
-  class ColorFormatter(logging.Formatter):
-    def format(self, record, *args, **kwargs):
-      # if the corresponding logger has children, they may receive modified
-      # record, so we want to keep it intact
-      new_record = copy.copy(record)
-      if new_record.levelno in LOG_COLORS:
-        new_record.levelname = "{color_begin}{level}{color_end}".format(
-            level=new_record.levelname,
-            color_begin=LOG_COLORS[new_record.levelno],
-            color_end=colorama.Style.RESET_ALL,
-        )
-      return super(ColorFormatter, self).format(new_record, *args, **kwargs)
-
-  log_screen_handler = logging.StreamHandler(stream=sys.stdout)
-  log_screen_handler.setFormatter(ColorFormatter(fmt='%(asctime)s %(levelname)-8s %(message)s', 
-    datefmt="{color_begin}[%H:%M:%S]{color_end}".format(
-      color_begin=colorama.Style.DIM,
-      color_end=colorama.Style.RESET_ALL
-    )))
   log = logging.getLogger(__name__)
   log.setLevel(logging.INFO if not args.verbose else logging.DEBUG)
+  log_screen_handler = logging.StreamHandler(stream=sys.stdout)
   log.addHandler(log_screen_handler)
+  try:
+    import colorama, copy
+
+    LOG_COLORS = {
+      logging.DEBUG: colorama.Fore.GREEN,
+      logging.INFO: colorama.Fore.BLUE,
+      logging.WARNING: colorama.Fore.YELLOW,
+      logging.ERROR: colorama.Fore.RED,
+      logging.CRITICAL: colorama.Back.RED
+    }
+
+    class ColorFormatter(logging.Formatter):
+      def format(self, record, *args, **kwargs):
+        # if the corresponding logger has children, they may receive modified
+        # record, so we want to keep it intact
+        new_record = copy.copy(record)
+        if new_record.levelno in LOG_COLORS:
+          new_record.levelname = "{color_begin}{level}{color_end}".format(
+              level=new_record.levelname,
+              color_begin=LOG_COLORS[new_record.levelno],
+              color_end=colorama.Style.RESET_ALL,
+          )
+        return super(ColorFormatter, self).format(new_record, *args, **kwargs)
+
+    log_screen_handler.setFormatter(ColorFormatter(fmt='%(asctime)s %(levelname)-8s %(message)s', 
+      datefmt="{color_begin}[%H:%M:%S]{color_end}".format(
+        color_begin=colorama.Style.DIM,
+        color_end=colorama.Style.RESET_ALL
+      )))
+  except ModuleNotFoundError as identifier:
+    pass
 
   # parse the provided arguments
   try:
