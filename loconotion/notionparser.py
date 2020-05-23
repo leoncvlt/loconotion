@@ -1,5 +1,4 @@
 import os
-import platform
 import sys
 import shutil
 import time
@@ -10,10 +9,9 @@ import glob
 import mimetypes
 import urllib.parse
 import hashlib
-import argparse
 from pathlib import Path
 
-log = logging.getLogger("loconotion")
+log = logging.getLogger(f"loconotion.{__name__}")
 
 try:
   import chromedriver_autoinstaller
@@ -26,50 +24,13 @@ try:
   from selenium.webdriver.support.ui import WebDriverWait 
   from bs4 import BeautifulSoup
   import requests
-  import toml
   import cssutils
   cssutils.log.setLevel(logging.CRITICAL) # removes warning logs from cssutils
 except ModuleNotFoundError as error:
   log.critical(f"ModuleNotFoundError: {error}. have your installed the requirements?")
   sys.exit()
 
-class notion_page_loaded(object):
-  """An expectation for checking that a notion page has loaded.
-  """
-  def __init__(self, url):
-    self.url = url
-
-  def __call__(self, driver):
-    notion_presence = len(driver.find_elements_by_class_name("notion-presence-container"))
-    collection_view_block = len(driver.find_elements_by_class_name("notion-collection_view_page-block"));
-    collection_search = len(driver.find_elements_by_class_name("collectionSearch"));
-    # embed_ghosts = len(driver.find_elements_by_css_selector("div[embed-ghost]"));
-    log.debug(f"Waiting for page content to load (presence container: {notion_presence}, loaders: {loading_spinners} )")
-    if (notion_presence and not loading_spinners):
-      return True
-    else:
-      return False
-
-class toggle_block_has_opened(object):
-  """An expectation for checking that a notion toggle block has been opened.
-  It does so by checking if the div hosting the content has enough children,
-  and the abscence of the loading spinner.
-  """
-  def __init__(self, toggle_block):
-    self.toggle_block = toggle_block
-
-  def __call__(self, driver):
-    toggle_content = self.toggle_block.find_element_by_css_selector("div:not([style]")
-    if (toggle_content):
-      content_children = len(toggle_content.find_elements_by_tag_name("div"))
-      is_loading = len(self.toggle_block.find_elements_by_class_name("loading-spinner"));
-      log.debug(f"Waiting for toggle block to load ({content_children} children so far and {is_loading} loaders)")
-      if (content_children > 3 and not is_loading):
-        return True
-      else:
-        return False
-    else:
-      return False
+from conditions import toggle_block_has_opened
 
 class Parser():
   def __init__(self, config = {}, args = {}):
@@ -190,7 +151,7 @@ class Parser():
             if (not file_extension):
               content_type = response.headers.get('content-type') 
               if (content_type):
-                file_extension = mimetypes.guess_extension(content_types)
+                file_extension = mimetypes.guess_extension(content_type)
             destination = destination.with_suffix(file_extension)
 
           Path(destination).parent.mkdir(parents=True, exist_ok=True)
@@ -229,9 +190,10 @@ class Parser():
     logs_path = (Path.cwd() / "logs" / "webdrive.log")
     logs_path.parent.mkdir(parents=True, exist_ok=True)
 
-    chrome_options = Options()  
-    chrome_options.add_argument("--headless")  
-    chrome_options.add_argument("window-size=1920,1080")
+    chrome_options = Options()
+    if (not self.args.get("non_headless", False)):
+      chrome_options.add_argument("--headless")  
+      chrome_options.add_argument("window-size=1920,1080")
     chrome_options.add_argument("--log-level=3");
     chrome_options.add_argument("--silent");
     chrome_options.add_argument("--disable-logging")
@@ -293,12 +255,12 @@ class Parser():
       if (len(new_toggle_blocks) > len(toggle_blocks)):
         # if so, run the function again
         open_toggle_blocks(opened_toggles)
-
-    # open those toggle blocks!
+    # open the toggle blocks in the page
     open_toggle_blocks()
 
     # creates soup from the page to start parsing
     soup = BeautifulSoup(self.driver.page_source, "html.parser")
+
 
     # remove scripts and other tags we don't want / need
     for unwanted in soup.findAll('script'):
@@ -312,6 +274,7 @@ class Parser():
     for vendors_css in soup.find_all("link", href=lambda x: x and 'vendors~' in x):
       vendors_css.decompose();
 
+
     # clean up the default notion meta tags
     for tag in ["description", "twitter:card", "twitter:site", "twitter:title", "twitter:description", "twitter:image", "twitter:url", "apple-itunes-app"]:
       unwanted_tag = soup.find("meta", attrs = { "name" : tag})
@@ -319,6 +282,7 @@ class Parser():
     for tag in ["og:site_name", "og:type", "og:url", "og:title", "og:description", "og:image"]:
       unwanted_og_tag = soup.find("meta", attrs = { "property" : tag})
       if (unwanted_og_tag): unwanted_og_tag.decompose();
+
 
     # set custom meta tags
     custom_meta_tags = self.get_page_config(url).get("meta", [])
@@ -328,6 +292,7 @@ class Parser():
         tag.attrs[attr] = value
       log.debug(f"Adding meta tag {str(tag)}")
       soup.head.append(tag)
+
 
     # process images
     cache_images = True
@@ -349,6 +314,7 @@ class Parser():
           if (img['src'].startswith('/')):
             img['src'] = "https://www.notion.so" + img['src']
 
+
     # process stylesheets
     for link in soup.findAll('link', rel="stylesheet"):
       if link.has_attr('href') and link['href'].startswith('/'):
@@ -368,6 +334,7 @@ class Parser():
               rule.style['src'] = f"url({str(cached_font_file)})"
         link['href'] = str(cached_css_file)
 
+
     # add our custom logic to all toggle blocks
     for toggle_block in soup.findAll('div',{'class':'notion-toggle-block'}):
       toggle_id = uuid.uuid4() 
@@ -380,6 +347,7 @@ class Parser():
         toggle_content['class'] = toggle_content.get('class', []) + ['loconotion-toggle-content']
         toggle_content.attrs['loconotion-toggle-id'] = toggle_button.attrs['loconotion-toggle-id'] = toggle_id
 
+
     # if there are any table views in the page, add links to the title rows
     for table_view in soup.findAll('div', {'class':'notion-table-view'}):
       for table_row in table_view.findAll('div', {'class':'notion-collection-item'}):
@@ -387,12 +355,16 @@ class Parser():
         # then grab its href and wrap the table row's name into a link
         table_row_block_id = table_row['data-block-id']
         table_row_hover_target = self.driver.find_element_by_css_selector(f"div[data-block-id='{table_row_block_id}'] > div > div")
+        # need to scroll the row into view or else the open button won't visible to selenium
+        self.driver.execute_script("arguments[0].scrollIntoView();", table_row_hover_target)
         ActionChains(self.driver).move_to_element(table_row_hover_target).perform()
         try:
-          WebDriverWait(self.driver, 3).until(EC.presence_of_element_located((By.CSS_SELECTOR, f"div[data-block-id='{table_row_block_id}'] > div > a")))
+          WebDriverWait(self.driver, 5).until(EC.visibility_of_element_located(
+            (By.CSS_SELECTOR, f"div[data-block-id='{table_row_block_id}'] > div > a")))
         except TimeoutException as ex:
-          log.error("Timeout")
+          log.error(f"Timeout waiting for the 'open' button for row in table with block id {table_row_block_id}")
         table_row_href = self.driver.find_element_by_css_selector(f"div[data-block-id='{table_row_block_id}'] > div > a").get_attribute('href')
+        table_row_href = table_row_href.split("notion.so")[-1]
         row_target_span = table_row.find("span")
         row_link_wrapper = soup.new_tag('a', attrs={'href': table_row_href, 'style':"cursor: pointer;"})
         row_target_span.wrap(row_link_wrapper)
@@ -435,6 +407,7 @@ class Parser():
       # finally append the font overrides stylesheets to the page
       soup.head.append(font_override_stylesheet)
 
+
     # inject any custom elements to the page
     custom_injects = self.get_page_config(url).get("inject", {})
     def injects_custom_tags(section):
@@ -456,6 +429,7 @@ class Parser():
     injects_custom_tags("head")
     injects_custom_tags("body")
 
+
     # inject loconotion's custom stylesheet and script
     loconotion_custom_css = self.cache_file(Path("bundles/loconotion.css"))
     custom_css = soup.new_tag("link", rel="stylesheet", href=str(loconotion_custom_css))
@@ -463,6 +437,7 @@ class Parser():
     loconotion_custom_js = self.cache_file(Path("bundles/loconotion.js"))
     custom_script = soup.new_tag("script", type="text/javascript", src=str(loconotion_custom_js))
     soup.body.insert(-1, custom_script)
+
 
     # find sub-pages and clean slugs / links
     sub_pages = [];
@@ -483,6 +458,7 @@ class Parser():
         sub_pages.append(sub_page_href)
         log.debug(f"Found link to page {a['href']}")
 
+
     # exports the parsed page
     html_str = str(soup)
     html_file = self.get_page_slug(url) if url != index else "index.html"
@@ -494,99 +470,22 @@ class Parser():
       f.write(html_str.encode('utf-8').strip())
     processed_pages[url] = html_file
 
+
     # parse sub-pages
     if (sub_pages and not self.args.get("single_page", False)):
       if (processed_pages): log.debug(f"Pages processed so far: {len(processed_pages)}")
       for sub_page in sub_pages:
         if not sub_page in processed_pages.keys():
           self.parse_page(sub_page, processed_pages = processed_pages, index = index)
+
     
     #we're all done!
     return processed_pages
+
 
   def run(self, url):
     start_time = time.time()
     total_processed_pages = self.parse_page(url)
     elapsed_time = time.time() - start_time
     formatted_time = '{:02d}:{:02d}:{:02d}'.format(int(elapsed_time // 3600), int(elapsed_time % 3600 // 60), int(elapsed_time % 60))
-    log.info(f'Finished!\n\n\tヽ( ・‿・)ﾉ Processed {len(total_processed_pages)} pages in {formatted_time}')
-
-if __name__ == '__main__':
-  # set up argument parser
-  parser = argparse.ArgumentParser(description='Generate static websites from Notion.so pages')
-  parser.add_argument('target', help='The config file containing the site properties, or the url of the Notion.so page to generate the site from')
-  parser.add_argument('--chromedriver', help='Use a specific chromedriver executable instead of the auto-installing one')
-  parser.add_argument("--single-page", action="store_true", default=False, help="Only parse the first page, then stop")
-  parser.add_argument('--clean', action='store_true', default=False, help='Delete all previously cached files for the site before generating it')
-  parser.add_argument("-v", "--verbose", action="store_true", help="Shows way more exciting facts in the output")
-  args = parser.parse_args()
-
-  # set up some pretty logs
-  log = logging.getLogger("loconotion")
-  log.setLevel(logging.INFO if not args.verbose else logging.DEBUG)
-  log_screen_handler = logging.StreamHandler(stream=sys.stdout)
-  log.addHandler(log_screen_handler)
-  log.propagate = False
-  try:
-    import colorama, copy
-
-    LOG_COLORS = {
-      logging.DEBUG: colorama.Fore.GREEN,
-      logging.INFO: colorama.Fore.BLUE,
-      logging.WARNING: colorama.Fore.YELLOW,
-      logging.ERROR: colorama.Fore.RED,
-      logging.CRITICAL: colorama.Back.RED
-    }
-
-    class ColorFormatter(logging.Formatter):
-      def format(self, record, *args, **kwargs):
-        # if the corresponding logger has children, they may receive modified
-        # record, so we want to keep it intact
-        new_record = copy.copy(record)
-        if new_record.levelno in LOG_COLORS:
-          new_record.levelname = "{color_begin}{level}{color_end}".format(
-              level=new_record.levelname,
-              color_begin=LOG_COLORS[new_record.levelno],
-              color_end=colorama.Style.RESET_ALL,
-          )
-        return super(ColorFormatter, self).format(new_record, *args, **kwargs)
-
-    log_screen_handler.setFormatter(ColorFormatter(fmt='%(asctime)s %(levelname)-8s %(message)s', 
-      datefmt="{color_begin}[%H:%M:%S]{color_end}".format(
-        color_begin=colorama.Style.DIM,
-        color_end=colorama.Style.RESET_ALL
-      )))
-  except ModuleNotFoundError as identifier:
-    pass
-
-  # parse the provided arguments
-  try:
-    if urllib.parse.urlparse(args.target).scheme:
-      try:
-        response = requests.get(args.target)
-        if ("notion.so" in args.target):
-          log.info("Initialising parser with simple page url")
-          config = { "page" : args.target }
-          Parser(config = config, args = vars(args))
-        else:
-          log.critical(f"{args.target} is not a notion.so page")
-      except requests.ConnectionError as exception:
-        log.critical(f"Connection error")
-    else:
-      if Path(args.target).is_file():
-        with open(args.target) as f:
-          parsed_config = toml.loads(f.read())
-          log.info(f"Initialising parser with configuration file")
-          log.debug(parsed_config)
-          Parser(config = parsed_config, args = vars(args))
-      else:
-        log.critical(f"Config file {args.target} does not exists")
-  except FileNotFoundError as e:
-    log.critical(f'FileNotFoundError: {e}')
-    sys.exit(0)
-  except KeyboardInterrupt:
-    log.critical('Interrupted by user')
-    try:
-      sys.exit(0)
-    except SystemExit:
-      os._exit(0)
+    log.info(f'Finished!\n\nProcessed {len(total_processed_pages)} pages in {formatted_time}')
