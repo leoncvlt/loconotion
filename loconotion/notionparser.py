@@ -31,7 +31,7 @@ except ModuleNotFoundError as error:
     log.critical(f"ModuleNotFoundError: {error}. have your installed the requirements?")
     sys.exit()
 
-from conditions import toggle_block_has_opened
+from conditions import toggle_block_has_opened, notion_page_loaded
 
 
 class Parser:
@@ -233,30 +233,14 @@ class Parser:
         log.debug(f"Using page config: {self.get_page_config(url)}")
         self.driver.get(url)
 
-        # if "This content does not exist" in self.driver.page_source:
-        #     log.error(
-        #         f"No content found in {url}."
-        #         " Are you sure the page is set to public?"
-        #     )
-        #     return
-
         try:
-            # WebDriverWait(self.driver, 10).until(notion_page_loaded())
-            WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.CLASS_NAME, "notion-presence-container")
-                )
-            )
+            WebDriverWait(self.driver, 10).until(notion_page_loaded())
         except TimeoutException as ex:
             log.critical(
                 "Timeout waiting for page content to load, or no content found."
                 " Are you sure the page is set to public?"
             )
             return
-
-        # cooldown to allow eventual database items to load
-        # TODO: figure out a way to detect they loaded
-        time.sleep(2)
 
         # function to expand all the toggle block in the page to make their content visible
         # so we can hook up our custom toggle logic afterwards
@@ -288,10 +272,9 @@ class Parser:
                                 " Likely it's already open, but doesn't hurt to check."
                             )
                         except Exception as exception:
-                            log.error(
-                                f"Error trying to open a toggle block: {exception}"
-                            )
+                            log.error(f"Error trying to open a toggle block: {exception}")
                         opened_toggles.append(toggle_block)
+
             # after all toggles have been opened, check the page again to see if
             # any toggle block had nested toggle blocks inside them
             new_toggle_blocks = self.driver.find_elements_by_class_name(

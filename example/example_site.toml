@@ -1,5 +1,5 @@
 ## Loconotion Site Configuration File ##
-# full .toml  configuration example file to showcase all of Loconotion's available settings
+# full .toml configuration example file to showcase all of Loconotion's available settings
 # check out https://github.com/toml-lang/toml for more info on the toml format
 
 # name of the folder that the site will be generated in
