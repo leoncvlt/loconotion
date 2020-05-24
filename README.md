@@ -40,11 +40,13 @@ It does, but I wasn't really happy with the styling - the pages looked a bit ugl
 
 ## Installation & Requirements
 
-`pip install -r requirements.txt`
+Make sure you're in your virtual environment of choiche, then run
+- `poetry install --no-dev` if you have [Poetry](https://python-poetry.org/) installed
+- `pip install -r requirements.txt` otherwise
 
 This script uses [ChromeDriver](chromedriver.chromium.org) to automate the Google Chrome browser - therefore Google Chrome needs to be installed in order to work.
 
-The script comes bundled with the default windows chromedriver executable. On Max / Linux, download the right distribution for you from https://chromedriver.chromium.org/downloads and place the executable in this folder. Alternatively, use the `--chromedriver` argument to specify its path at runtime.
+The script will automatically try to download and use the appropriate chromedriver distribution for your OS and Chrome version. If this doesn't work, download the right version for you from https://chromedriver.chromium.org/downloads and use the `--chromedriver` argument to specify its path at runtime.
 
 ## Simple Usage
 

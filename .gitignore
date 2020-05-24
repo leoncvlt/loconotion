@@ -108,10 +108,7 @@ dmypy.json
 .pyre/
 
 # End of https://www.gitignore.io/api/python
-
+.env
 .vscode
-env
-dist/*
-test/*
-logs/*
-*.bat
+temp
+logs
