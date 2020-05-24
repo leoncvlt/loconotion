@@ -40,14 +40,15 @@ class toggle_block_has_opened(object):
         toggle_content = self.toggle_block.find_element_by_css_selector("div:not([style]")
         if toggle_content:
             content_children = len(toggle_content.find_elements_by_tag_name("div"))
+            unknown_children = len(toggle_content.find_elements_by_class_name("notion-unknown-block"))
             is_loading = len(
                 self.toggle_block.find_elements_by_class_name("loading-spinner")
             )
             log.debug(
                 f"Waiting for toggle block to load"
-                f" ({content_children} children so far and {is_loading} loaders)"
+                f" ({unknown_children} pending children blocks / {is_loading} loaders)"
             )
-            if content_children > 3 and not is_loading:
+            if not unknown_children and not is_loading:
                 return True
             else:
                 return False

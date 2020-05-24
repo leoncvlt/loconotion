@@ -287,9 +287,9 @@ class Parser:
                                 "Timeout waiting for toggle block to open."
                                 " Likely it's already open, but doesn't hurt to check."
                             )
-                        except Exception as ex:
+                        except Exception as exception:
                             log.error(
-                                "Something went wrong while trying to open a toggle block"
+                                f"Error trying to open a toggle block: {exception}"
                             )
                         opened_toggles.append(toggle_block)
             # after all toggles have been opened, check the page again to see if
