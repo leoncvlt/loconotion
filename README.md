@@ -4,11 +4,11 @@
 
 ## But Why?
 
-[Notion](https://notion.so) is a web app where you can create your own workspace / perosnal wiki out of content blocks. It feels good to use, and the results look very pretty - the developers did a great job. Given that it also offers the possibility of making a page (and its sub-page) public on the web, several people choose to use Notion to manage their personal blog, portfolio, or some kind of simple website. Sadly Notion does not support custom domains: your public pages are stuck in the `notion.so` domain, under long computer generated URLs.
+[Notion](https://notion.so) is a web app where you can create your own workspace / perosnal wiki out of content blocks. It feels good to use, and the results look very pretty - the developers did a great job. Given that it also offers the possibility of making a page (and its sub-pagse) public on the web, several people choose to use Notion to manage their personal blog, portfolio, or some kind of simple website. Sadly Notion does not support custom domains: your public pages are stuck in the `notion.so` domain, under long computer-generated URLs.
 
 Some services like Super, HostingPotion, HostNotion and Fruition try to work around this issue by relying on a [clever hack](https://gist.github.com/mayneyao/b9fefc9625b76f70488e5d8c2a99315d) using CloudFlare workers. This solution, however, has some disadvantages:
 
-- **Not free** - Super, HostingPotion and HostNotion all take a monthly fee since they manage all the "hacky bits" for you; Fruition is open-source but any domain with a decent amount of daily visit will soon clash against CloudFlare's free tier limitations, and force you to upgrade to the 5\$ or more plan (plus you need to setup Cloudflare yourself)
+- **Not free** - Super, HostingPotion and HostNotion all take a monthly fee since they manage all the "hacky bits" for you; Fruition is open-source but any domain with a decent amount of daily visit will soon clash against CloudFlare's free tier limitations, and force you to upgrade to the 5$ or more plan (plus you need to setup Cloudflare yourself)
 - **Slow-ish** - As the page is still hosted on Notion, it comes bundled with all their analytics, editing / collaboration javascript, vendors css, and more bloat which causes the page to load at speeds that are not exactly appropriate for a simple blog / website. Running [this](https://www.notion.so/The-perfect-It-s-Always-Sunny-in-Philadelphia-episode-d08aaec2b24946408e8be0e9f2ae857e) example page on Google's [PageSpeed Insights](https://developers.google.com/speed/pagespeed/insights/) scores a measly **24 - 66** on mobile / desktop.
 - **Ugly URLs** - While the services above enable the use of custom domains, the URLs for individual pages are stuck with the long, ugly, original Notion URL (apart from Fruition - they got custom URLs figured out, altough you will always see the original URL flashing for an instant when the page is loaded).
 - **Notion Free Account Limitations** - Recently Notion introduced a change to its pricing model where public pages can't be set to be indexed by search engines on a free account (but they also removed the blocks count limitations, which is a good trade-off if you ask me)
@@ -32,7 +32,14 @@ Bear in mind that as we are effectively parsing a static version of the page, th
 - All editing features will be disabled - no ticking checkboxes or dragging kanban boards cards around. Usually not an issue since a public page to serve as a website would have changes locked.
 - Dynamic elements won't update automatically - for example, the calendar will not highlight the current date.
 
-Everything else should be fine. Loconotion rebuilds the logic for toggle boxes and embeds so they still work; plus it defines some additional CSS rules to enable mobile responsiveness across the whole site (in some cases looking even better than Notion's defaults - wasn't exactly thought for mobile).
+Everything else should be fine. Loconotion re-implements the logic on client side for the following dynamic elements so they still work:
+
+- Toggle blocks (nested ones too!)
+- Anchor links
+- Embeds
+- Name column on tables become a link to the page of the database item in that row
+
+On top of that, it defines some additional CSS rules to enable mobile responsiveness across the whole site (in some cases looking even better than Notion's defaults - wasn't exactly thought for mobile).
 
 ### But Notion already had an html export function?
 
@@ -40,7 +47,7 @@ It does, but I wasn't really happy with the styling - the pages looked a bit ugl
 
 ## Installation & Requirements
 
-Make sure you're in your virtual environment of choiche, then run
+Make sure you're in your virtual environment of choice, then run
 - `poetry install --no-dev` if you have [Poetry](https://python-poetry.org/) installed
 - `pip install -r requirements.txt` otherwise
 
@@ -63,14 +70,15 @@ Here's what a full configuration would look like, alongside with explanations fo
 
 ```toml
 ## Loconotion Site Configuration File ##
-# full .toml  configuration example file to showcase all of Loconotion's available settings
+# full .toml configuration example file to showcase all of Loconotion's available settings
 # check out https://github.com/toml-lang/toml for more info on the toml format
 
 # name of the folder that the site will be generated in
 name = "Notion Test Site"
+
 # the notion.so page to being parsing from. This page will become the index.html
-# of the generated site, and loconotation will parse all sub-pages present on the page.
-page = "https://www.notion.so/A-Notion-Page-03c403f4fdc94cc1b315b9469a8950ef"
+# of the generated site, and loconotation will parse all sub-pages present on the page
+page = "https://www.notion.so/Loconotion-Example-Page-03c403f4fdc94cc1b315b9469a8950ef"
 
 ## Global Site Settings ##
 # this [site] table defines override settings for the whole site
@@ -89,16 +97,18 @@ page = "https://www.notion.so/A-Notion-Page-03c403f4fdc94cc1b315b9469a8950ef"
 
   ## Custom Fonts ##
   # you can specify the name of a google font to use on the site - use the font embed name
-  # if in doubt select a style on fonts.google.com and navigate to the "embed" tag to check the name under CSS rules
-  # the table keys controls the font of the following elements:
-    # site: changes the font for the whole page (apart from code blocks) but the following settings override it
-    # navbar: site breadcrumbs on the top-left of the page
-    # title: page title (under the icon)
-    # h1: heading blocks, and inline databases' titles
-    # h2: sub-heading blocks
-    # h3: sub-sub-heading blocks
-    # body: non-heading text on the page
-    # code: text inside code blocks
+  # if in doubt select a style on fonts.google.com and navigate to the "embed" tag to 
+  # check the name under CSS rules
+  # the following table keys controls the font of specific elements:
+  #   site: changes the font for the whole page (apart from code blocks) 
+  #         but the settings below override it
+  #   navbar: site breadcrumbs on the top-left of the page
+  #   title: page title (under the icon)
+  #   h1: heading blocks, and inline databases' titles
+  #   h2: sub-heading blocks
+  #   h3: sub-sub-heading blocks
+  #   body: non-heading text on the page
+  #   code: text inside code blocks
   [site.fonts]
   site = 'Lato'
   navbar = ''
@@ -110,52 +120,67 @@ page = "https://www.notion.so/A-Notion-Page-03c403f4fdc94cc1b315b9469a8950ef"
   code = ''
 
   ## Custom Element Injection ##
-  # defined as an array of tables [[site.inject]], followed by 'head' or 'body' to set where the injection point,
-  # followed by name of the tag to inject. Each key in the table maps to an atttribute in the tag
-  # the following injects <link href="favicon-16x16.png" rel="icon" sizes="16x16" type="image/png"/> in the <head>
+  # defined as an array of tables [[site.inject]], followed by 'head' or 'body' to set 
+  # the injection point, followed by name of the tag to inject
+  # each key in the table maps to an atttribute in the tag
+  # e.g. the following injects this tag in the <head>:
+  #   <link href="favicon-16x16.png" rel="icon" sizes="16x16" type="image/png"/> 
   [[site.inject.head.link]]
-  rel="icon"
+  rel="icon" 
   sizes="16x16"
   type="image/png"
   href="/example/favicon-16x16.png"
-
-  # the following injects <script src="custom-script.js" type="text/javascript"></script> in the <body>
+  
+  # the following injects this tag in the in the <body>:
+  #   <script src="custom-script.js" type="text/javascript"></script>
+  # note that all href / src files are copied to the root of the site folder 
+  # regardless of their original path
   [[site.inject.body.script]]
   type="text/javascript"
   src="/example/custom-script.js"
 
 ## Individual Page Settings ##
-# the [pages] table defines override settings for individual pages, by defining a sub-table named after the page url
-# (or part of the url, but careful into not use a string that appears in multiple page urls)
+# the [pages] table defines override settings for individual pages, by defining 
+# a sub-table named after the page url (or part of the url, but careful about
+# not using a string that appears in multiple page urls)
 [pages]
-  # the following settings will only apply to this page: https://www.notion.so/d2fa06f244e64f66880bb0491f58223d
+  # the following settings will only apply to this page: 
+  #   https://www.notion.so/d2fa06f244e64f66880bb0491f58223d
   [pages.d2fa06f244e64f66880bb0491f58223d]
     ## custom slugs ##
-    # inside page settings, you can change the url that page will map to with the 'slug' key
-    # e.g. page "/d2fa06f244e64f66880bb0491f58223d" will now map to "/list"
-    slug = "list"
+    # inside page settings, you can change the url for that page with the 'slug' key
+    # e.g. page "/d2fa06f244e64f66880bb0491f58223d" will now map to "/games-list"
+    slug = "games-list"
 
     # change the description meta tag for this page only
-    [[pages.d2fa06f244e64f66880bb0491f58223d.meta]]
+    [[pages.d2fa06f244e64f66880bb0491f58223d.meta]] 
     name = "description"
     content = "A fullscreen list database page, now with a pretty slug"
 
     # change the title font for this page only
     [pages.d2fa06f244e64f66880bb0491f58223d.fonts]
-    title = 'Nunito'
+    title = 'Nunito' 
 
-  # for smaller sets of settings you can use inline notation
-  # 2483a3a5c3fd445980c1adc8e550b552.slug = "gallery"
-  # 2604ce45890645c79f67d92833083fee.slug = "table"
-  # a28dba2e7a67448da52f2cd2c641407b.slug = "board"
+  # set up pretty slugs for the other database pages
+  [pages.54dab6011e604430a21dc477cb8e4e3a]
+    slug = "film-gallery"
+  [pages.2604ce45890645c79f67d92833083fee]
+    slug = "books-table"
+  [pages.ae0a85c527824a3a855b7f4d31f4e0fc]
+    slug = "random-board"
 ```
 
-On top of this, the script can take this optional arguments:
+On top of this, the script can take these optional arguments:
 
 ```
-  --clean        Delete all previously cached files for the site before generating it
-  -v, --verbose  Shows way more exciting facts in the output
-  --single-page  Don't parse sub-pages
+  --chromedriver CHROMEDRIVER
+                        Use a specific chromedriver executable instead of the
+                        auto-installing one
+  --single-page         Only parse the first page, then stop
+  --clean               Delete all previously cached files for the site before
+                        generating it
+  --non-headless        Run chromedriver in non-headless mode
+  -v, --verbose         Increasite output log verbosity
 ```
 
 ## Roadmap / Features wishlist
@@ -170,8 +195,10 @@ On top of this, the script can take this optional arguments:
 
 - [leonclvt.com](https://leoncvlt.com)
 
-If you used Loconotion to build a cool site and want it added to the list above, shoot me a mail!
+If you used Loconotion to build a cool site and want it added to the list above, shoot me a mail or submit a pull request!
 
 ## Support
 
-![](https://img.shields.io/badge/-buy%20me%20a%20coffee-lightgrey?style=flat&logo=buy-me-a-coffee&color=FF813F&logoColor=white) If you found this useful, consider buying me a coffee so I get a a nice dose of methilxanthine, and you get a nice dose of good karma.
+![](https://img.shields.io/badge/-buy%20me%20a%20coffee-lightgrey?style=flat&logo=buy-me-a-coffee&color=FF813F&logoColor=white)
+
+If you found this useful, consider buying me a coffee so I get a a nice dose of methilxanthine, and you get a nice dose of good karma.
