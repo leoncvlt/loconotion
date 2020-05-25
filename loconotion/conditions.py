@@ -22,6 +22,7 @@ class notion_page_loaded(object):
             log.debug(
                 f"Waiting for page content to load"
                 f" (pending blocks: {unknown_blocks},"
+                f" loading spinners: {loading_spinners},"
                 f" loaded scrollers: {len(scrollers_with_children)} / {len(scrollers)})"
             )
             all_scrollers_loaded = len(scrollers) == len(scrollers_with_children)

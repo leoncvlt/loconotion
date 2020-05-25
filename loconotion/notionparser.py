@@ -234,7 +234,7 @@ class Parser:
         self.driver.get(url)
 
         try:
-            WebDriverWait(self.driver, 10).until(notion_page_loaded())
+            WebDriverWait(self.driver, 60).until(notion_page_loaded())
         except TimeoutException as ex:
             log.critical(
                 "Timeout waiting for page content to load, or no content found."
@@ -446,12 +446,11 @@ class Parser:
         fonts_selectors = {
             "site": "div:not(.notion-code-block)",
             "navbar": ".notion-topbar div",
-            "title": ".notion-page-block > div, .notion-collection_view_page-block > div",
-            "h1": ".notion-header-block div, notion-page-content >"
-            " notion-collection_view-block > div:first-child div",
+            "title": ".notion-page-block > div, .notion-collection_view_page-block > div[data-root]",
+            "h1": ".notion-header-block div, notion-page-content > notion-collection_view-block > div:first-child div",
             "h2": ".notion-sub_header-block div",
             "h3": ".notion-sub_sub_header-block div",
-            "body": ".notion-app-inner",
+            "body": ".notion-scroller",
             "code": ".notion-code-block *",
         }
         custom_fonts = self.get_page_config(url).get("fonts", {})
