@@ -41,6 +41,12 @@ Everything else should be fine. Loconotion re-implements the logic on client sid
 
 On top of that, it defines some additional CSS rules to enable mobile responsiveness across the whole site (in some cases looking even better than Notion's defaults - wasn't exactly thought for mobile).
 
+## Demo
+
+You can check out an example site containing most of Notion's blocks / elements exported as a static site with Loconotion, and hosted on Netlify: https://loconotion-example.netlify.app/
+
+For reference, the original Notion public page can be accessed [here](https://www.notion.so/Loconotion-Example-Page-03c403f4fdc94cc1b315b9469a8950ef#ffa3779739fd4ba286b7f8462f9e8e60).
+
 ### But Notion already had an html export function?
 
 It does, but I wasn't really happy with the styling - the pages looked a bit uglier than what they look like on a live Notion page. Plus, it doesn't support all the cool customization features outlined above!
@@ -110,7 +116,7 @@ page = "https://www.notion.so/Loconotion-Example-Page-03c403f4fdc94cc1b315b9469a
   #   body: non-heading text on the page
   #   code: text inside code blocks
   [site.fonts]
-  site = 'Lato'
+  site = 'Nunito'
   navbar = ''
   title = 'Montserrat'
   h1 = 'Montserrat'
@@ -159,7 +165,7 @@ page = "https://www.notion.so/Loconotion-Example-Page-03c403f4fdc94cc1b315b9469a
 
     # change the title font for this page only
     [pages.d2fa06f244e64f66880bb0491f58223d.fonts]
-    title = 'Nunito' 
+    title = 'DM Mono' 
 
   # set up pretty slugs for the other database pages
   [pages.54dab6011e604430a21dc477cb8e4e3a]
