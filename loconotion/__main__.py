@@ -45,7 +45,7 @@ def main():
         help="Run chromedriver in non-headless mode",
     )
     argparser.add_argument(
-        "-v", "--verbose", action="store_true", help="Increasite output log verbosity"
+        "-v", "--verbose", action="store_true", help="Increase output log verbosity"
     )
     args = argparser.parse_args()
 

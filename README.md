@@ -9,11 +9,11 @@
 Some services like Super, HostingPotion, HostNotion and Fruition try to work around this issue by relying on a [clever hack](https://gist.github.com/mayneyao/b9fefc9625b76f70488e5d8c2a99315d) using CloudFlare workers. This solution, however, has some disadvantages:
 
 - **Not free** - Super, HostingPotion and HostNotion all take a monthly fee since they manage all the "hacky bits" for you; Fruition is open-source but any domain with a decent amount of daily visit will soon clash against CloudFlare's free tier limitations, and force you to upgrade to the 5$ or more plan (plus you need to setup Cloudflare yourself)
-- **Slow-ish** - As the page is still hosted on Notion, it comes bundled with all their analytics, editing / collaboration javascript, vendors css, and more bloat which causes the page to load at speeds that are not exactly appropriate for a simple blog / website. Running [this](https://www.notion.so/The-perfect-It-s-Always-Sunny-in-Philadelphia-episode-d08aaec2b24946408e8be0e9f2ae857e) example page on Google's [PageSpeed Insights](https://developers.google.com/speed/pagespeed/insights/) scores a measly **24 - 66** on mobile / desktop.
+- **Slow-ish** - As the page is still hosted on Notion, it comes bundled with all their analytics, editing / collaboration javascript, vendors css, and more bloat which causes the page to load at speeds that are not exactly appropriate for a simple blog / website. Running [example page](https://www.notion.so/The-perfect-It-s-Always-Sunny-in-Philadelphia-episode-d08aaec2b24946408e8be0e9f2ae857e) on Google's [PageSpeed Insights](https://developers.google.com/speed/pagespeed/insights/) scores a measly **24 - 66** on mobile / desktop.
 - **Ugly URLs** - While the services above enable the use of custom domains, the URLs for individual pages are stuck with the long, ugly, original Notion URL (apart from Fruition - they got custom URLs figured out, altough you will always see the original URL flashing for an instant when the page is loaded).
 - **Notion Free Account Limitations** - Recently Notion introduced a change to its pricing model where public pages can't be set to be indexed by search engines on a free account (but they also removed the blocks count limitations, which is a good trade-off if you ask me)
 
-Loconotion approaches this a bit differently. It lets Notion render the page, then scrapes it and saves a static version of the page to disk. This offers the following benefits:
+**Loconotion** approaches this a bit differently. It lets Notion render the page, then scrapes it and saves a static version of the page to disk. This offers the following benefits:
 
 - Strips out all the unnecessary bloat, like Notion's analytics, vendors scripts / styles, and javascript left in to enable collaboration.
 - Caches all images / assets / fonts (hashing filenames), while keeping links intact.
@@ -23,7 +23,7 @@ Loconotion approaches this a bit differently. It lets Notion render the page, th
 - Lets you inject any custom style or script, from custom analytics or real-time chat support to hidden crypto miners (please don't do that)
 - Outputs static files ready to be deployed on Netlify, GitHub Pages, Vercel, your Raspberry PI, that cheap second-hand Thinkpad you're using as a random server - you name it.
 
-The result? A faster, self-contained version of the page that keeps all of Notion's nice layouts and eye candies. For comparison, the same example page parsed with Loconotion and deployed on Netflify's free tier achieves a PageSpeed Insight score of **96 - 100**!
+The result? A faster, self-contained version of the page that keeps all of Notion's nice page layouts and eye candies. For comparison, that same example page parsed with Loconotion and deployed on Netflify's free tier achieves a PageSpeed Insight score of **96 - 100**!
 
 Bear in mind that as we are effectively parsing a static version of the page, there are some limitations compared to Notion's live public pages:
 
@@ -41,15 +41,15 @@ Everything else should be fine. Loconotion re-implements the logic on client sid
 
 On top of that, it defines some additional CSS rules to enable mobile responsiveness across the whole site (in some cases looking even better than Notion's defaults - wasn't exactly thought for mobile).
 
+### But Notion already had an html export function?
+
+It does, but I wasn't really happy with the styling - the pages looked a bit uglier than what they look like on a live Notion page. Plus, it doesn't support all the cool customization features outlined above!
+
 ## Demo
 
 You can check out an example site containing most of Notion's blocks / elements exported as a static site with Loconotion, and hosted on Netlify: https://loconotion-example.netlify.app/
 
-For reference, the original Notion public page can be accessed [here](https://www.notion.so/Loconotion-Example-Page-03c403f4fdc94cc1b315b9469a8950ef#ffa3779739fd4ba286b7f8462f9e8e60).
-
-### But Notion already had an html export function?
-
-It does, but I wasn't really happy with the styling - the pages looked a bit uglier than what they look like on a live Notion page. Plus, it doesn't support all the cool customization features outlined above!
+For reference, the original Notion public page that the site was generated from can be accessed [here](https://www.notion.so/Loconotion-Example-Page-03c403f4fdc94cc1b315b9469a8950ef#ffa3779739fd4ba286b7f8462f9e8e60).
 
 ## Installation & Requirements
 
@@ -70,9 +70,10 @@ In its simplest form, the script takes the URL of a public Notion.so page, and g
 ## Advanced Usage
 
 You can fully configure Loconotion to your needs by passing a [.toml](https://github.com/toml-lang/toml) configuration file to the script instead:
+
 `python loconotion example\example_site.toml`
 
-Here's what a full configuration would look like, alongside with explanations for each parameter.
+Here's what a full .toml configuration would look like, alongside with explanations of each parameter.
 
 ```toml
 ## Loconotion Site Configuration File ##
@@ -186,7 +187,7 @@ On top of this, the script can take these optional arguments:
   --clean               Delete all previously cached files for the site before
                         generating it
   --non-headless        Run chromedriver in non-headless mode
-  -v, --verbose         Increasite output log verbosity
+  -v, --verbose         Increase output log verbosity
 ```
 
 ## Roadmap / Features wishlist
@@ -206,5 +207,4 @@ If you used Loconotion to build a cool site and want it added to the list above,
 ## Support
 
 ![](https://img.shields.io/badge/-buy%20me%20a%20coffee-lightgrey?style=flat&logo=buy-me-a-coffee&color=FF813F&logoColor=white)
-
-If you found this useful, consider buying me a coffee so I get a a nice dose of methilxanthine, and you get a nice dose of good karma.
+If you found this useful, consider sponsoring a coffee so I get a a nice dose of methilxanthine, and you get a nice dose of karma.
