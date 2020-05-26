@@ -3,7 +3,7 @@ div[role="button"]:not(.notion-record-icon):hover {
   background: rgba(55, 53, 47, 0.08);
 }
 
-/* hides loading spinner */
+/* hides loading spinners */
 .loading-spinner {
   display: none !important;
 }
@@ -11,6 +11,21 @@ div[role="button"]:not(.notion-record-icon):hover {
 /* hides elements on the top right (search box, duplicate, notion shortcut) */
 .notion-topbar > div > div:not(:first-child) {
   display: none !important;
+}
+
+/* makes inline databases behave with window resizing */
+.notion-collection_view-block {
+  width: 900px !important;
+  max-width: 100% !important;
+}
+.notion-collection_view-block > div,
+.notion-collection_view-block .notion-list-view,
+.notion-collection_view-block .notion-gallery-view,
+.notion-collection_view-block .notion-table-view,
+.notion-collection_view-block .notion-board-view,
+.notion-collection_view-block .notion-calendar-view {
+  padding-left: unset !important;
+  padding-right: unset !important;
 }
 
 @media only screen and (max-width: 960px) {
