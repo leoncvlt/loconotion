@@ -13,24 +13,27 @@ div[role="button"]:not(.notion-record-icon):hover {
   display: none !important;
 }
 
-/* makes inline databases behave with window resizing */
-.notion-collection_view-block {
-  width: 900px !important;
+/* stops inline databases from overflowing horizontally */
+.notion-scroller .notion-collection_view-block {
+  width: 100% !important;
   max-width: 100% !important;
 }
-.notion-collection_view-block > div,
-.notion-collection_view-block .notion-list-view,
-.notion-collection_view-block .notion-gallery-view,
-.notion-collection_view-block .notion-table-view,
-.notion-collection_view-block .notion-board-view,
-.notion-collection_view-block .notion-calendar-view {
+/* .notion-scroller .notion-collection_view-block > div,
+.notion-scroller .notion-collection_view-block .notion-list-view,
+.notion-scroller .notion-collection_view-block .notion-gallery-view,
+.notion-scroller .notion-collection_view-block .notion-table-view,
+.notion-scroller .notion-collection_view-block .notion-board-view,
+.notion-scroller .notion-collection_view-block .notion-calendar-view {
+  width: 900px !important;
+  max-width: 100% !important;
   padding-left: unset !important;
   padding-right: unset !important;
-}
+} */
 
 @media only screen and (max-width: 960px) {
-  /* normalizes banner width */
-  .notion-scroller > div > div:not([class]) {
+  /* normalizes banner / page title width */
+  .notion-scroller > div:not([class]),
+  .notion-scroller > div > div:not([class])  {
     width: 100% !important;
     max-width: 960px !important;
     padding-left: 0 !important;
@@ -55,6 +58,7 @@ div[role="button"]:not(.notion-record-icon):hover {
   }
 
   /* add padding to content */
+  .notion-scroller > div:not([class]):not(:first-child),
   .notion-scroller > .notion-page-content,
   .notion-frame > .notion-scroller > .notion-scroller > .notion-list-view,
   .notion-frame > .notion-scroller > .notion-scroller > .notion-gallery-view,
