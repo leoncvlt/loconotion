@@ -1,3 +1,4 @@
+// re-implement toggle blocks
 const showToggle = (content, arrow) => {
   arrow.style.transform = "rotateZ(180deg)";
   content.style.display = "block";
@@ -26,6 +27,8 @@ for (let i = 0; i < toggleButtons.length; i++) {
   }
 }
 
+// sets all iframes' parent container opacity to 1
+// originally notion has a callback to do that on iframe loaded
 const pendingIframes = document.getElementsByTagName("iframe");
 for (let i = 0; i < pendingIframes.length; i++) {
   pendingIframes.item(i).parentElement.style.opacity = 1;
@@ -59,12 +62,15 @@ for (let i = 0; i < pendingIframes.length; i++) {
 //   pendingIframe.appendChild(iframe);
 // }
 
+// hide search box on inline databases
+// couldn't find a reliable way to do this in css
 const collectionSearchBoxes = document.getElementsByClassName("collectionSearch");
 for (let i = 0; i < collectionSearchBoxes.length; i++) {
   const collectionSearchBox = collectionSearchBoxes.item(i).parentElement;
   collectionSearchBox.style.display = "none";
 }
 
+// re-implement anchor links
 const anchorLinks = document.querySelectorAll("a.loconotion-anchor-link");
 for (let i = 0; i < anchorLinks.length; i++) {
   const anchorLink = anchorLinks.item(i);

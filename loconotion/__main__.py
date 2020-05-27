@@ -40,6 +40,11 @@ def main():
         help="Delete all previously cached files for the site before generating it",
     )
     argparser.add_argument(
+        "--clean-style",
+        action="store_true",
+        help="Delete only previously cached .css files for the site before generating it",
+    )
+    argparser.add_argument(
         "--non-headless",
         action="store_true",
         help="Run chromedriver in non-headless mode",

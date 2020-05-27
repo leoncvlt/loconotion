@@ -61,6 +61,13 @@ class Parser:
                 log.info(f"Removing previously cached files in '{self.dist_folder}'")
             except OSError as e:
                 log.error(f"Cannot remove '{self.dist_folder}': {e}")
+        elif self.args.get("clean_style", False):
+            try:
+                log.info(f"Removing previously cached style files in '{self.dist_folder}'")
+                for style_file in glob.glob(str(self.dist_folder / "*.css")):
+                    os.remove(style_file)
+            except OSError as e:
+                log.error(f"Cannot remove syle files in '{self.dist_folder}': {e}")
 
         # create the output folder if necessary
         self.dist_folder.mkdir(parents=True, exist_ok=True)
