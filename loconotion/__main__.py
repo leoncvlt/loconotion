@@ -40,9 +40,14 @@ def main():
         help="Delete all previously cached files for the site before generating it",
     )
     argparser.add_argument(
-        "--clean-style",
+        "--clean-css",
         action="store_true",
-        help="Delete only previously cached .css files for the site before generating it",
+        help="Delete previously cached .css files for the site before generating it",
+    )
+    argparser.add_argument(
+        "--clean-js",
+        action="store_true",
+        help="Delete previously cached .js files for the site before generating it",
     )
     argparser.add_argument(
         "--non-headless",
