@@ -72,7 +72,7 @@ class Parser:
             if self.args.get("clean_js", False):
                 try:
                     log.info(f"Removing cached .js files in '{self.dist_folder}'")
-                    for style_file in glob.glob(str(self.dist_folder / "*.css")):
+                    for style_file in glob.glob(str(self.dist_folder / "*.js")):
                         os.remove(style_file)
                 except OSError as e:
                     log.error(f"Cannot remove .js files in '{self.dist_folder}': {e}")
