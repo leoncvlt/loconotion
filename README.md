@@ -1,6 +1,6 @@
 # Loconotion
 
-**Loconotion** is a Python script that parses a [Notion.so](https://notion.so) public page (alongside with all of its subpages) and generates a static site out of it.
+**Loconotion** is a Python script that parses a [Notion.so](https://notion.so) public page (alongside with all of its subpages) and generates a lightweight, customizable static site out of it.
 
 ## But Why?
 
@@ -180,11 +180,16 @@ page = "https://www.notion.so/Loconotion-Example-Page-03c403f4fdc94cc1b315b9469a
 On top of this, the script can take these optional arguments:
 
 ```
+  -h, --help            show this help message and exit
   --chromedriver CHROMEDRIVER
                         Use a specific chromedriver executable instead of the
                         auto-installing one
   --single-page         Only parse the first page, then stop
   --clean               Delete all previously cached files for the site before
+                        generating it
+  --clean-css           Delete previously cached .css files for the site
+                        before generating it
+  --clean-js            Delete previously cached .js files for the site before
                         generating it
   --non-headless        Run chromedriver in non-headless mode
   -v, --verbose         Increase output log verbosity
@@ -192,11 +197,12 @@ On top of this, the script can take these optional arguments:
 
 ## Roadmap / Features wishlist
 
+- [ ] Customizable navbar breadcrumbs
 - [ ] Dark / light theme toggle
-- [ ] Automated Netlify / GitHub pages / Vercel deployements
+- [ ] Automated deployements (e.g. Netlify / GitHub pages / Vercel / etc.)
 - [ ] Injectable custom HTML
-- [ ] Html / css / js minification & images optimization
-- [ ] Custom theming
+- [ ] HTML / CSS / JS minification & images optimization
+- [ ] More advanced custom theming
 
 ## Sites built with Loconotion
 
@@ -204,7 +210,6 @@ On top of this, the script can take these optional arguments:
 
 If you used Loconotion to build a cool site and want it added to the list above, shoot me a mail or submit a pull request!
 
-## Support
+## Support ![https://www.buymeacoffee.com/leoncvlt](https://img.shields.io/badge/-buy%20me%20a%20coffee-lightgrey?style=flat&logo=buy-me-a-coffee&color=FF813F&logoColor=white)
 
-![](https://img.shields.io/badge/-buy%20me%20a%20coffee-lightgrey?style=flat&logo=buy-me-a-coffee&color=FF813F&logoColor=white)
-If you found this useful, consider sponsoring a coffee so I get a a nice dose of methilxanthine, and you get a nice dose of karma.
+If you found this useful, consider [buying me a coffee](https://www.buymeacoffee.com/leoncvlt) so I get a a nice dose of methilxanthine, and you get a nice dose of karma.

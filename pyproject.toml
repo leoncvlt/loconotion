@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "loconotion"
 version = "0.1.0"
-description = "Generate static websites from Notion.so pages"
+description = "Turn Notion pages into lightweight, customizable static websites"
 authors = ["Leonardo Cavaletti <impeto.blu@gmail.com>"]
 
 [tool.poetry.dependencies]
