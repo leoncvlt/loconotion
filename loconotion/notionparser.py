@@ -448,7 +448,7 @@ class Parser:
                         f" row in table with block id {table_row_block_id}"
                     )
                 table_row_href = self.driver.find_element_by_css_selector(
-                    f"div[data-block-id='{table_row_block_id}'] > div > a"
+                    f"div[data-block-id='{table_row_block_id}'] > a"
                 ).get_attribute("href")
                 table_row_href = table_row_href.split("notion.so")[-1]
                 row_target_span = table_row.find("span")
