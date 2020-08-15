@@ -84,7 +84,7 @@ Here's what a full .toml configuration would look like, alongside with explanati
 name = "Notion Test Site"
 
 # the notion.so page to being parsing from. This page will become the index.html
-# of the generated site, and loconotation will parse all sub-pages present on the page
+# of the generated site, and loconotion will parse all sub-pages present on the page
 page = "https://www.notion.so/Loconotion-Example-Page-03c403f4fdc94cc1b315b9469a8950ef"
 
 ## Global Site Settings ##
@@ -185,6 +185,9 @@ On top of this, the script can take these optional arguments:
                         Use a specific chromedriver executable instead of the
                         auto-installing one
   --single-page         Only parse the first page, then stop
+  --timeout TIMEOUT     Time in seconds to wait for the loading of lazy-loaded
+                        dynamic elements (default 5). If content from the page
+                        seems to be missing, try increasing this value
   --clean               Delete all previously cached files for the site before
                         generating it
   --clean-css           Delete previously cached .css files for the site
@@ -210,6 +213,6 @@ On top of this, the script can take these optional arguments:
 
 If you used Loconotion to build a cool site and want it added to the list above, shoot me a mail or submit a pull request!
 
-## Support ![https://www.buymeacoffee.com/leoncvlt](https://img.shields.io/badge/-buy%20me%20a%20coffee-lightgrey?style=flat&logo=buy-me-a-coffee&color=FF813F&logoColor=white)
+## Support [![Buy me a coffee](https://img.shields.io/badge/-buy%20me%20a%20coffee-lightgrey?style=flat&logo=buy-me-a-coffee&color=FF813F&logoColor=white "Buy me a coffee")](https://www.buymeacoffee.com/leoncvlt)
 
 If you found this useful, consider [buying me a coffee](https://www.buymeacoffee.com/leoncvlt) so I get a a nice dose of methilxanthine, and you get a nice dose of karma.

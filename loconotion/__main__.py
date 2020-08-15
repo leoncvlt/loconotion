@@ -35,6 +35,12 @@ def main():
         "--single-page", action="store_true", help="Only parse the first page, then stop"
     )
     argparser.add_argument(
+        "--timeout",
+        default=5,
+        help="Time in seconds to wait for the loading of lazy-loaded dynamic elements (default 5)."
+        " If content from the page seems to be missing, try increasing this value",
+    )
+    argparser.add_argument(
         "--clean",
         action="store_true",
         help="Delete all previously cached files for the site before generating it",
