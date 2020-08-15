@@ -14,26 +14,30 @@ div[role="button"]:not(.notion-record-icon):hover {
 }
 
 /* stops inline databases from overflowing horizontally */
+.notion-frame {
+  max-width: 100%;
+}
 .notion-scroller .notion-collection_view-block {
   width: 100% !important;
   max-width: 100% !important;
 }
-/* .notion-scroller .notion-collection_view-block > div,
+
+/* Resizes inlines databases */
+.notion-scroller .notion-collection_view-block > div,
 .notion-scroller .notion-collection_view-block .notion-list-view,
 .notion-scroller .notion-collection_view-block .notion-gallery-view,
 .notion-scroller .notion-collection_view-block .notion-table-view,
 .notion-scroller .notion-collection_view-block .notion-board-view,
 .notion-scroller .notion-collection_view-block .notion-calendar-view {
-  width: 900px !important;
   max-width: 100% !important;
   padding-left: unset !important;
   padding-right: unset !important;
-} */
+}
 
 @media only screen and (max-width: 960px) {
   /* normalizes banner / page title width */
   .notion-scroller > div:not([class]),
-  .notion-scroller > div > div:not([class])  {
+  .notion-scroller > div > div:not([class]) {
     width: 100% !important;
     max-width: 960px !important;
     padding-left: 0 !important;
@@ -45,8 +49,8 @@ div[role="button"]:not(.notion-record-icon):hover {
   .notion-page-content > .notion-collection_view-block,
   .notion-page-content > .notion-collection_view-block > div,
   .notion-page-content > .notion-collection_view-block > .notion-scroller > div {
-    width: 100% !important;
-    max-width: unset !important;
+    width: 100vw !important;
+    /* max-width: unset !important; */
     padding-right: 0 !important;
     padding-left: 0 !important;
   }
@@ -75,6 +79,27 @@ div[role="button"]:not(.notion-record-icon):hover {
   }
   .notion-column_list-block > div > * {
     width: unset !important;
+  }
+
+  /* forces gallery to wrap around pages */
+  .notion-gallery-view {
+    width: 100vw;
+  }
+
+  /* enable horizontal scroll for lists and tables on mobile */
+  .notion-collection-item > a {
+    overflow: visible !important;
+  }
+  .notion-collection-item > a > div {
+    width: unset !important;
+  }
+  .notion-scroller.horizontal {
+    overflow-x: scroll;
+  }
+
+  /* makes the top border on overflowing list reach the full width of the list */
+  .notion-list-view > .notion-collection_view_page-block {
+    width: fit-content;
   }
 
   /* Stops text from overflowing past max-width on bookmark blocks; */
