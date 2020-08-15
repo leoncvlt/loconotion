@@ -352,7 +352,7 @@ class Parser:
             log.debug(f"Adding meta tag {str(tag)}")
             soup.head.append(tag)
 
-        # process images
+        # process images & emojis
         cache_images = True
         for img in soup.findAll("img"):
             if img.has_attr("src"):
@@ -371,6 +371,21 @@ class Parser:
                 else:
                     if img["src"].startswith("/"):
                         img["src"] = "https://www.notion.so" + img["src"]
+
+            # on emoji images, cache their sprite sheet and re-set their background url
+            if img.has_attr("class") and "notion-emoji" in img["class"]:
+                style = cssutils.parseStyle(img["style"])
+                spritesheet = style["background"]
+                spritesheet_url = spritesheet[
+                    spritesheet.find("(") + 1 : spritesheet.find(")")
+                ]
+                cached_spritesheet_url = self.cache_file(
+                    "https://www.notion.so" + spritesheet_url
+                )
+                style["background"] = spritesheet.replace(
+                    spritesheet_url, str(cached_spritesheet_url)
+                )
+                img["style"] = style.cssText
 
         # process stylesheets
         for link in soup.findAll("link", rel="stylesheet"):
