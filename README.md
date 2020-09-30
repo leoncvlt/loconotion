@@ -1,4 +1,4 @@
-# Loconotion
+# Loconotion -An Amazing Python Project
 
 **Loconotion** is a Python script that parses a [Notion.so](https://notion.so) public page (alongside with all of its subpages) and generates a lightweight, customizable static site out of it.
 
@@ -29,10 +29,10 @@ Bear in mind that as we are effectively parsing a static version of the page, th
 
 - All pages will open in their own page and not modals (depending on how you look at it this could be a plus)
 - Databases will be presented in their initial view - for example, no switching views from table to gallery and such
-- All editing features will be disabled - no ticking checkboxes or dragging kanban boards cards around. Usually not an issue since a public page to serve as a website would have changes locked.
+- All editing features will be disabled - no ticking check boxes or dragging kanban board cards around. Usually not an issue since a public page to serve as a website would have changes locked.
 - Dynamic elements won't update automatically - for example, the calendar will not highlight the current date.
 
-Everything else should be fine. Loconotion re-implements the logic on client side for the following dynamic elements so they still work:
+Everything else should be fine. Loconotion re-implements the logic on client side for the following dynamic elements, so they still work:
 
 - Toggle blocks (nested ones too!)
 - Anchor links
