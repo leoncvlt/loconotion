@@ -1,4 +1,4 @@
-# Loconotion
+# Loconotion -An amazing project
 
 **Loconotion** is a Python script that parses a [Notion.so](https://notion.so) public page (alongside with all of its subpages) and generates a lightweight, customizable static site out of it.
 
