@@ -451,42 +451,13 @@ class Parser:
                 ] = toggle_id
 
         # if there are any table views in the page, add links to the title rows
+        # the link to the row item is equal to its data-block-id without dashes
         for table_view in soup.findAll("div", {"class": "notion-table-view"}):
             for table_row in table_view.findAll(
                 "div", {"class": "notion-collection-item"}
             ):
-                # for each row, hover the mouse over it to make the open button appear,
-                # then grab its href and wrap the table row's name into a link
                 table_row_block_id = table_row["data-block-id"]
-                table_row_hover_target = self.driver.find_element_by_css_selector(
-                    f"div[data-block-id='{table_row_block_id}'] > div > div"
-                )
-                # need to scroll the row into view or else
-                # the open button won't visible to selenium
-                self.driver.execute_script(
-                    "arguments[0].scrollIntoView();", table_row_hover_target
-                )
-                ActionChains(self.driver).move_to_element(
-                    table_row_hover_target
-                ).perform()
-                try:
-                    WebDriverWait(self.driver, 5).until(
-                        EC.visibility_of_element_located(
-                            (
-                                By.CSS_SELECTOR,
-                                f"div[data-block-id='{table_row_block_id}'] > div > a",
-                            )
-                        )
-                    )
-                except TimeoutException as ex:
-                    log.error(
-                        f"Timeout waiting for the 'open' button to appear for"
-                        f" row in table with block id {table_row_block_id}"
-                    )
-                table_row_href = self.driver.find_element_by_css_selector(
-                    f"div[data-block-id='{table_row_block_id}'] > div > a"
-                ).get_attribute("href")
-                table_row_href = table_row_href.split("notion.so")[-1]
+                table_row_href = "/" + table_row_block_id.replace("-", "")
                 row_target_span = table_row.find("span")
                 row_link_wrapper = soup.new_tag(
                     "a", attrs={"href": table_row_href, "style": "cursor: pointer;"}
