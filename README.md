@@ -61,6 +61,19 @@ This script uses [ChromeDriver](chromedriver.chromium.org) to automate the Googl
 
 The script will automatically try to download and use the appropriate chromedriver distribution for your OS and Chrome version. If this doesn't work, download the right version for you from https://chromedriver.chromium.org/downloads and use the `--chromedriver` argument to specify its path at runtime.
 
+### Docker support
+
+There is a Docker support also. To build a container and to render the page run:
+```bash
+# Build container with loconotion
+$ docker-compose build loconotion
+
+# Run loconotion renderer with any arguments
+$ docker-compose run loconotion PATH_TO_NOTION_FILE [ARGS]
+```
+
+Docker container is built from `python:3.8` tag, there is google-chrome-stable and chromedriver installed. See more in [docker/Dockerfile](docker/Dockerfile).
+
 ## Simple Usage
 
 `python loconotion https://www.notion.so/The-perfect-It-s-Always-Sunny-in-Philadelphia-episode-d08aaec2b24946408e8be0e9f2ae857e`

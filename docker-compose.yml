@@ -1,0 +1,11 @@
+version: "3"
+
+services:
+  loconotion:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: loconotion:latest
+    volumes:
+      - ${LOCONOTION_LOCAL_DIST:-/tmp/}:/app/loconotion/dist
+    restart: always
