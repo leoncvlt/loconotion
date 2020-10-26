@@ -183,6 +183,8 @@ class Parser:
                             content_type = response.headers.get("content-type")
                             if content_type:
                                 file_extension = mimetypes.guess_extension(content_type)
+                        elif '%3f' in file_extension.lower():
+                            file_extension = re.split("%3f", file_extension, flags=re.IGNORECASE)[0]
                         destination = destination.with_suffix(file_extension)
 
                     Path(destination).parent.mkdir(parents=True, exist_ok=True)
