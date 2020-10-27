@@ -36,6 +36,7 @@ def main():
     )
     argparser.add_argument(
         "--timeout",
+        type=int,
         default=5,
         help="Time in seconds to wait for the loading of lazy-loaded dynamic elements (default 5)."
         " If content from the page seems to be missing, try increasing this value",
