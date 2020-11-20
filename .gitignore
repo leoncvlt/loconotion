@@ -112,3 +112,6 @@ dmypy.json
 .vscode
 temp
 logs
+
+.idea/
+venv/

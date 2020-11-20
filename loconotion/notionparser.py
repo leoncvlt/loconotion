@@ -116,7 +116,7 @@ class Parser:
                     return {**site_config, **matching_page_config}
                 else:
                     log.error(
-                        f"Matching page configuration for {url} was not a dict:"
+                        f"Matching page configuration for {token} was not a dict:"
                         f" {matching_page_config} - something went wrong"
                     )
                     return site_config
@@ -244,16 +244,19 @@ class Parser:
         )
 
     def parse_page(self, url, processed_pages={}, index=None):
-        # if this is the first page being parse, set it as the index.html
-        if not index:
-            index = url
-
         log.info(f"Parsing page '{url}'")
         log.debug(f"Using page config: {self.get_page_config(url)}")
-        self.driver.get(url)
 
         try:
-            WebDriverWait(self.driver, 60).until(notion_page_loaded())
+            self.load(url)
+            if not index:
+                # if this is the first page being parse, set it as the index.html
+                index = url
+                # if dark theme is enabled, set local storage item and re-load the page
+                if self.args.get("dark_theme", True):
+                    log.debug(f"Dark theme is enabled")
+                    self.driver.execute_script("window.localStorage.setItem('theme','{\"mode\":\"dark\"}');")
+                    self.load(url)
         except TimeoutException as ex:
             log.critical(
                 "Timeout waiting for page content to load, or no content found."
@@ -402,8 +405,8 @@ class Parser:
                 style = cssutils.parseStyle(img["style"])
                 spritesheet = style["background"]
                 spritesheet_url = spritesheet[
-                    spritesheet.find("(") + 1 : spritesheet.find(")")
-                ]
+                                  spritesheet.find("(") + 1: spritesheet.find(")")
+                                  ]
                 cached_spritesheet_url = self.cache_file(
                     "https://www.notion.so" + spritesheet_url
                 )
@@ -458,7 +461,7 @@ class Parser:
         # the link to the row item is equal to its data-block-id without dashes
         for table_view in soup.findAll("div", {"class": "notion-table-view"}):
             for table_row in table_view.findAll(
-                "div", {"class": "notion-collection-item"}
+                    "div", {"class": "notion-collection-item"}
             ):
                 table_row_block_id = table_row["data-block-id"]
                 table_row_href = "/" + table_row_block_id.replace("-", "")
@@ -564,8 +567,8 @@ class Parser:
                     a["href"] = "#" + sub_page_href_tokens[-1]
                     a["class"] = a.get("class", []) + ["loconotion-anchor-link"]
                     if (
-                        sub_page_href in processed_pages.keys()
-                        or sub_page_href in sub_pages
+                            sub_page_href in processed_pages.keys()
+                            or sub_page_href in sub_pages
                     ):
                         log.debug(
                             f"Original page for anchor link {sub_page_href}"
@@ -607,6 +610,10 @@ class Parser:
 
         # we're all done!
         return processed_pages
+
+    def load(self, url):
+        self.driver.get(url)
+        WebDriverWait(self.driver, 60).until(notion_page_loaded())
 
     def run(self, url):
         start_time = time.time()
