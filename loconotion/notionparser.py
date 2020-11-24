@@ -463,8 +463,9 @@ class Parser:
                 table_row_block_id = table_row["data-block-id"]
                 table_row_href = "/" + table_row_block_id.replace("-", "")
                 row_target_span = table_row.find("span")
+                row_target_span["style"] = row_target_span["style"].replace("pointer-events: none;","")
                 row_link_wrapper = soup.new_tag(
-                    "a", attrs={"href": table_row_href, "style": "cursor: pointer;"}
+                    "a", attrs={"href": table_row_href, "style": "cursor: pointer; color: inherit; text-decoration: none; fill: inherit;"}
                 )
                 row_target_span.wrap(row_link_wrapper)
 
