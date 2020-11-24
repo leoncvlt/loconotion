@@ -278,6 +278,12 @@ class Parser:
                 time.sleep(self.args["timeout"])
                 new_height = scroller.get_attribute("scrollHeight")
                 log.debug(f"New notion-scroller height after timeout is: {new_height}")
+                try:
+                    selector = '[style*="clip-path: polygon(0% -20%, 100% -20%, 100% 100%, 0% 100%)"]'
+                    self.driver.find_element_by_css_selector(selector)
+                    self.driver.execute_script("document.querySelector('" + selector + "').remove()")
+                except NoSuchElementException:
+                    pass
                 if new_height == last_height:
                     self.driver.execute_script("arguments[0].scrollTo(0, 0)", scroller)
                     break
