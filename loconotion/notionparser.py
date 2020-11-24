@@ -279,6 +279,7 @@ class Parser:
                 new_height = scroller.get_attribute("scrollHeight")
                 log.debug(f"New notion-scroller height after timeout is: {new_height}")
                 if new_height == last_height:
+                    self.driver.execute_script("arguments[0].scrollTo(0, 0)", scroller)
                     break
                 last_height = new_height
 
