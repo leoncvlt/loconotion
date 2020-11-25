@@ -555,8 +555,10 @@ class Parser:
         # find sub-pages and clean slugs / links
         sub_pages = []
         for a in soup.findAll("a"):
-            if a["href"].startswith("/"):
+            sub_page_href = a["href"]
+            if sub_page_href.startswith("/"):
                 sub_page_href = "https://www.notion.so" + a["href"]
+            if sub_page_href.startswith("https://www.notion.so/"):
                 # if the link is an anchor link,
                 # check if the page hasn't already been parsed
                 if "#" in sub_page_href:
