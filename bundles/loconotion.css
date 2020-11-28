@@ -34,6 +34,12 @@ div[role="button"]:not(.notion-record-icon):hover {
   padding-right: unset !important;
 }
 
+/* pull alias arrows back inline */
+svg.alias {
+  display: inline-block !important;
+  height: auto !important;
+}
+
 @media only screen and (max-width: 960px) {
   /* normalizes banner / page title width */
   .notion-scroller > div:not([class]),
