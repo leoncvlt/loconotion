@@ -420,7 +420,7 @@ class Parser:
                     continue
                 # css_file = link['href'].strip("/")
                 cached_css_file = self.cache_file("https://www.notion.so" + link["href"])
-                with open(self.dist_folder / cached_css_file, "rb") as f:
+                with open(self.dist_folder / cached_css_file, "rb+") as f:
                     stylesheet = cssutils.parseString(f.read())
                     # open the stylesheet and check for any font-face rule,
                     for rule in stylesheet.cssRules:
@@ -433,6 +433,10 @@ class Parser:
                                 f"https://www.notion.so/{font_file}"
                             )
                             rule.style["src"] = f"url({str(cached_font_file)})"
+                    f.seek(0)
+                    f.write(stylesheet.cssText)
+                    f.truncate()
+
                 link["href"] = str(cached_css_file)
 
         # add our custom logic to all toggle blocks
