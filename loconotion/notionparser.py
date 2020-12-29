@@ -545,12 +545,13 @@ class Parser:
         injects_custom_tags("body")
 
         # inject loconotion's custom stylesheet and script
-        loconotion_custom_css = self.cache_file(Path("bundles/loconotion.css"))
+
+        loconotion_custom_css = self.cache_file(Path(os.path.dirname(__file__)) / ".." / "bundles/loconotion.css")
         custom_css = soup.new_tag(
             "link", rel="stylesheet", href=str(loconotion_custom_css)
         )
         soup.head.insert(-1, custom_css)
-        loconotion_custom_js = self.cache_file(Path("bundles/loconotion.js"))
+        loconotion_custom_js = self.cache_file(Path(os.path.dirname(__file__)) / ".." / "bundles/loconotion.js")
         custom_script = soup.new_tag(
             "script", type="text/javascript", src=str(loconotion_custom_js)
         )
