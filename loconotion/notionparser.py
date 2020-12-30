@@ -347,6 +347,10 @@ class Parser:
         for vendors_css in soup.find_all("link", href=lambda x: x and "vendors~" in x):
             vendors_css.decompose()
 
+        # collection selectors (List, Gallery, etc.) don't work, so remove them
+        for collection_selector in soup.findAll("div", {"class": "notion-collection-view-select"}):
+            collection_selector.decompose()
+
         # clean up the default notion meta tags
         for tag in [
             "description",
