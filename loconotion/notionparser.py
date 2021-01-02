@@ -54,6 +54,8 @@ class Parser:
         self.dist_folder = Path(config.get("output", Path("dist") / site_name))
         log.info(f"Setting output path to '{self.dist_folder}'")
 
+        self.asset_base = self.args.get("asset_base", "")
+
         # check if the argument to clean the dist folder was passed
         if self.args.get("clean", False):
             try:
@@ -83,6 +85,11 @@ class Parser:
         # initialize chromedriver and start parsing
         self.driver = self.init_chromedriver()
         self.run(url)
+
+    def get_asset_url(self, filepath):
+        parsed_url = urllib.parse.urlparse(self.asset_base)
+        return urllib.parse.urlunparse(parsed_url._replace(path=str(Path(parsed_url.path) / filepath)))
+
 
     def get_page_config(self, token):
         # starts by grabbing the gobal site configuration table, if exists
@@ -391,7 +398,7 @@ class Parser:
                         # if (not '.amazonaws' in img_src):
                         # img_src = urllib.parse.unquote(img_src)
 
-                    cached_image = self.cache_file(img_src)
+                    cached_image = self.get_asset_url(self.cache_file(img_src))
                     img["src"] = cached_image
                 else:
                     if img["src"].startswith("/"):
@@ -408,7 +415,7 @@ class Parser:
                     "https://www.notion.so" + spritesheet_url
                 )
                 style["background"] = spritesheet.replace(
-                    spritesheet_url, str(cached_spritesheet_url)
+                    spritesheet_url, self.get_asset_url(cached_spritesheet_url)
                 )
                 img["style"] = style.cssText
 
@@ -432,12 +439,13 @@ class Parser:
                             cached_font_file = self.cache_file(
                                 f"https://www.notion.so/{font_file}"
                             )
-                            rule.style["src"] = f"url({str(cached_font_file)})"
+                            log.info(f"cached font file url = {self.get_asset_url(cached_font_file)}")
+                            rule.style["src"] = f"url({self.get_asset_url(cached_font_file)})"
                     f.seek(0)
                     f.write(stylesheet.cssText)
                     f.truncate()
 
-                link["href"] = str(cached_css_file)
+                link["href"] = self.get_asset_url(cached_css_file)
 
         # add our custom logic to all toggle blocks
         for toggle_block in soup.findAll("div", {"class": "notion-toggle-block"}):
@@ -537,7 +545,7 @@ class Parser:
                             )
                             # destination = (self.dist_folder / source.name)
                             # shutil.copyfile(source, destination)
-                            injected_tag[attr] = str(cached_custom_file)  # source.name
+                            injected_tag[attr] = self.get_asset_url(cached_custom_file)  # source.name
                     log.debug(f"Injecting <{section}> tag: {str(injected_tag)}")
                     soup.find(section).append(injected_tag)
 
@@ -548,12 +556,12 @@ class Parser:
 
         loconotion_custom_css = self.cache_file(Path(os.path.dirname(__file__)) / ".." / "bundles/loconotion.css")
         custom_css = soup.new_tag(
-            "link", rel="stylesheet", href=str(loconotion_custom_css)
+            "link", rel="stylesheet", href=self.get_asset_url(loconotion_custom_css)
         )
         soup.head.insert(-1, custom_css)
         loconotion_custom_js = self.cache_file(Path(os.path.dirname(__file__)) / ".." / "bundles/loconotion.js")
         custom_script = soup.new_tag(
-            "script", type="text/javascript", src=str(loconotion_custom_js)
+            "script", type="text/javascript", src=self.get_asset_url(loconotion_custom_js)
         )
         soup.body.insert(-1, custom_script)
 
