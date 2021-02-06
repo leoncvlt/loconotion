@@ -100,6 +100,9 @@ name = "Notion Test Site"
 # of the generated site, and loconotion will parse all sub-pages present on the page
 page = "https://www.notion.so/Loconotion-Example-Page-03c403f4fdc94cc1b315b9469a8950ef"
 
+# optionally apply notion's dark mode, remove the line below to use the default light mode
+theme = "dark"
+
 ## Global Site Settings ##
 # this [site] table defines override settings for the whole site
 # later on we will see how to define settings for a single page

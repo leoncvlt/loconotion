@@ -264,6 +264,11 @@ class Parser:
             )
             return
 
+        # light theme is on by default
+        # enable dark mode based on https://fruitionsite.com/ dark mode hack
+        if self.config.get('theme') == 'dark':
+            self.driver.execute_script("__console.environment.ThemeStore.setState({ mode: 'dark' });")
+
         # scroll at the bottom of the notion-scroller element to load all elements
         # continue once there are no changes in height after a timeout
         # don't do this if the page has a calendar databse on it or it will load forever
@@ -344,6 +349,10 @@ class Parser:
             overlay_div.decompose()
         for vendors_css in soup.find_all("link", href=lambda x: x and "vendors~" in x):
             vendors_css.decompose()
+
+        # collection selectors (List, Gallery, etc.) don't work, so remove them
+        for collection_selector in soup.findAll("div", {"class": "notion-collection-view-select"}):
+            collection_selector.decompose()
 
         # clean up the default notion meta tags
         for tag in [
@@ -466,8 +475,9 @@ class Parser:
                 table_row_block_id = table_row["data-block-id"]
                 table_row_href = "/" + table_row_block_id.replace("-", "")
                 row_target_span = table_row.find("span")
+                row_target_span["style"] = row_target_span["style"].replace("pointer-events: none;","")
                 row_link_wrapper = soup.new_tag(
-                    "a", attrs={"href": table_row_href, "style": "cursor: pointer;"}
+                    "a", attrs={"href": table_row_href, "style": "cursor: pointer; color: inherit; text-decoration: none; fill: inherit;"}
                 )
                 row_target_span.wrap(row_link_wrapper)
 
@@ -557,8 +567,10 @@ class Parser:
         # find sub-pages and clean slugs / links
         sub_pages = []
         for a in soup.findAll("a"):
-            if a["href"].startswith("/"):
+            sub_page_href = a["href"]
+            if sub_page_href.startswith("/"):
                 sub_page_href = "https://www.notion.so" + a["href"]
+            if sub_page_href.startswith("https://www.notion.so/"):
                 # if the link is an anchor link,
                 # check if the page hasn't already been parsed
                 if "#" in sub_page_href:
