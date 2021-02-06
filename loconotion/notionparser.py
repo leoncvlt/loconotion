@@ -223,7 +223,7 @@ class Parser:
                 sys.exit()
 
         log.info(f"Initialising chromedriver at {chromedriver_path}")
-        logs_path = Path.cwd() / "logs" / "webdrive.log"
+        logs_path = Path.cwd() / ".logs" / "webdrive.log"
         logs_path.parent.mkdir(parents=True, exist_ok=True)
 
         chrome_options = Options()
