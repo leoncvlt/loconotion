@@ -566,7 +566,7 @@ class Parser:
 
         # find sub-pages and clean slugs / links
         sub_pages = []
-        for a in soup.findAll("a"):
+        for a in soup.find_all('a', href=True):
             sub_page_href = a["href"]
             if sub_page_href.startswith("/"):
                 sub_page_href = "https://www.notion.so" + a["href"]
