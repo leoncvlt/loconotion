@@ -576,36 +576,52 @@ class Parser:
 
         # find sub-pages and clean slugs / links
         sub_pages = []
+        parse_links = not self.get_page_config(url).get("no-links", False)
         for a in soup.find_all('a', href=True):
             sub_page_href = a["href"]
             if sub_page_href.startswith("/"):
                 sub_page_href = "https://www.notion.so" + a["href"]
             if sub_page_href.startswith("https://www.notion.so/"):
-                # if the link is an anchor link,
-                # check if the page hasn't already been parsed
-                if "#" in sub_page_href:
-                    sub_page_href_tokens = sub_page_href.split("#")
-                    sub_page_href = sub_page_href_tokens[0]
-                    a["href"] = "#" + sub_page_href_tokens[-1]
-                    a["class"] = a.get("class", []) + ["loconotion-anchor-link"]
-                    if (
-                            sub_page_href in processed_pages.keys()
-                            or sub_page_href in sub_pages
-                    ):
-                        log.debug(
-                            f"Original page for anchor link {sub_page_href}"
-                            " already parsed / pending parsing, skipping"
+                if parse_links or not len(a.find_parents("div", class_="notion-scroller")):
+                    # if the link is an anchor link,
+                    # check if the page hasn't already been parsed
+                    if "#" in sub_page_href:
+                        sub_page_href_tokens = sub_page_href.split("#")
+                        sub_page_href = sub_page_href_tokens[0]
+                        a["href"] = "#" + sub_page_href_tokens[-1]
+                        a["class"] = a.get("class", []) + ["loconotion-anchor-link"]
+                        if (
+                                sub_page_href in processed_pages.keys()
+                                or sub_page_href in sub_pages
+                        ):
+                            log.debug(
+                                f"Original page for anchor link {sub_page_href}"
+                                " already parsed / pending parsing, skipping"
+                            )
+                            continue
+                    else:
+                        a["href"] = (
+                            self.get_page_slug(sub_page_href)
+                            if sub_page_href != index
+                            else "index.html"
                         )
-                        continue
+                    sub_pages.append(sub_page_href)
+                    log.debug(f"Found link to page {a['href']}")
                 else:
-                    a["href"] = (
-                        self.get_page_slug(sub_page_href)
-                        if sub_page_href != index
-                        else "index.html"
-                    )
-                sub_pages.append(sub_page_href)
-                log.debug(f"Found link to page {a['href']}")
+                    # if the page is set not to follow any links, strip the href
+                    # do this only on children of .notion-scroller, we don't want
+                    # to strip the links from the top nav bar
+                    log.debug(f"Stripping link for {a['href']}")
+                    del a["href"]
+                    a.name = "span"
+                    # remove pointer cursor styling on the link and all children
+                    for child in ([a] + a.find_all()):
+                        if (child.has_attr("style")):
+                            style = cssutils.parseStyle(child['style'])
+                            style['cursor'] = "default"
+                            child['style'] = style.cssText
 
+            
         # exports the parsed page
         html_str = str(soup)
         html_file = self.get_page_slug(url) if url != index else "index.html"

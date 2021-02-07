@@ -184,13 +184,20 @@ theme = "dark"
     [pages.d2fa06f244e64f66880bb0491f58223d.fonts]
     title = 'DM Mono' 
 
-  # set up pretty slugs for the other database pages
+  # set up pretty slugs and options for the other database pages
   [pages.54dab6011e604430a21dc477cb8e4e3a]
     slug = "film-gallery"
+
   [pages.2604ce45890645c79f67d92833083fee]
     slug = "books-table"
-  [pages.ae0a85c527824a3a855b7f4d31f4e0fc]
+
+    # don't follow any link on the page, skipping parsing sub-pages linked from this one
+    # useful for large tables where we don't want individual pages for each item
+    no-links = true
+
+  [pages.a28dba2e7a67448da52f2cd2c641407b]
     slug = "random-board"
+    no-links = true
 ```
 
 On top of this, the script can take these optional arguments:
