@@ -446,7 +446,7 @@ class Parser:
                                 rule.style["src"].split("url(")[-1].split(")")[0]
                             )
                             # assemble the url given the current css path
-                            font_url = "/".join(p.strip("/") for p in ["https://www.notion.so", parent_css_path, font_file] if p)
+                            font_url = "/".join(p.strip("/") for p in ["https://www.notion.so", parent_css_path, font_file] if p.strip("/"))
                             # don't hash the font files filenames, rather get filename only
                             cached_font_file = self.cache_file(font_url, Path(font_file).name)
                             rule.style["src"] = f"url({cached_font_file})"
