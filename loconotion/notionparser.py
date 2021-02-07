@@ -430,21 +430,31 @@ class Parser:
                 # we don't need the vendors stylesheet
                 if "vendors~" in link["href"]:
                     continue
-                # css_file = link['href'].strip("/")
                 cached_css_file = self.cache_file("https://www.notion.so" + link["href"])
-                with open(self.dist_folder / cached_css_file, "rb") as f:
+                # files in the css file might be reference with a relative path,
+                # so store the path of the current css file
+                parent_css_path = os.path.split(urllib.parse.urlparse(link["href"]).path)[0]
+                # open the locally saved file
+                with open(self.dist_folder / cached_css_file, "rb+") as f:
                     stylesheet = cssutils.parseString(f.read())
                     # open the stylesheet and check for any font-face rule,
                     for rule in stylesheet.cssRules:
                         if rule.type == cssutils.css.CSSRule.FONT_FACE_RULE:
                             # if any are found, download the font file
+                            # TODO: maths fonts have fallback font sources
                             font_file = (
-                                rule.style["src"].split("url(/")[-1].split(") format")[0]
+                                rule.style["src"].split("url(")[-1].split(")")[0]
                             )
-                            cached_font_file = self.cache_file(
-                                f"https://www.notion.so/{font_file}"
-                            )
-                            rule.style["src"] = f"url({str(cached_font_file)})"
+                            # assemble the url given the current css path
+                            font_url = "/".join(p.strip("/") for p in ["https://www.notion.so", parent_css_path, font_file] if p)
+                            # don't hash the font files filenames, rather get filename only
+                            cached_font_file = self.cache_file(font_url, Path(font_file).name)
+                            rule.style["src"] = f"url({cached_font_file})"
+                    # commit stylesheet edits to file
+                    f.seek(0)
+                    f.truncate()
+                    f.write(stylesheet.cssText)
+                        
                 link["href"] = str(cached_css_file)
 
         # add our custom logic to all toggle blocks
