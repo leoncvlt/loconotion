@@ -234,6 +234,7 @@ On top of this, the script can take these optional arguments:
 ## Sites built with Loconotion
 
 - [leonclvt.com](https://leoncvlt.com)
+- [aahnik.dev](https://aahnik.dev)
 
 If you used Loconotion to build a cool site and want it added to the list above, shoot me a mail or submit a pull request!
 
