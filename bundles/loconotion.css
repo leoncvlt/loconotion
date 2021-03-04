@@ -40,6 +40,30 @@ svg.alias {
   height: auto !important;
 }
 
+/* stops text from overflowing past max-width on bookmark blocks; */
+.notion-bookmark-block div {
+  white-space: unset !important;
+}
+
+/* fixes oversized page properties on Safari */
+.notion-scroller
+  > div:nth-child(2):not(.notion-page-content)
+  > div:not([data-block-id])
+  div:not(.notion-page-details-controls) {
+  height: auto !important;
+}
+
+/* fixes possible stray header on tables */
+.notion-collection_view_page-block > div:first-child {
+  transform: unset !important;
+}
+
+/* fixes oversize icons in inline page links */
+a[data-token-index] svg.page {
+  height: auto !important;
+}
+
+/* mobile fixes */
 @media only screen and (max-width: 960px) {
   /* normalizes banner / page title width */
   .notion-scroller > div:not([class]),
@@ -106,24 +130,5 @@ svg.alias {
   /* makes the top border on overflowing list reach the full width of the list */
   .notion-list-view > .notion-collection_view_page-block {
     width: fit-content;
-  }
-
-  /* stops text from overflowing past max-width on bookmark blocks; */
-  .notion-bookmark-block div {
-    white-space: unset !important;
-  }
-
-  /* fixes oversized page properties on Safari */
-  .notion-scroller
-    > div:nth-child(2):not(.notion-page-content)
-    > div:not([data-block-id])
-    div:not(.notion-page-details-controls) {
-    background: red !important;
-    height: auto !important;
-  }
-
-  /* fixes possible stray header on tables */
-  .notion-collection_view_page-block > div:first-child {
-    transform: unset !important;
   }
 }
