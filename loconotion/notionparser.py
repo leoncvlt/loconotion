@@ -454,7 +454,7 @@ class Parser:
                     f.seek(0)
                     f.truncate()
                     f.write(stylesheet.cssText)
-                        
+
                 link["href"] = str(cached_css_file)
 
         # add our custom logic to all toggle blocks
@@ -546,6 +546,12 @@ class Parser:
                 for element in elements:
                     injected_tag = soup.new_tag(tag)
                     for attr, value in element.items():
+
+                        # `inner_html` refers to the tag's inner content
+                        # and will be added later
+                        if attr == "inner_html":
+                            continue
+
                         injected_tag[attr] = value
                         # if the value refers to a file, copy it to the dist folder
                         if attr.lower() == "href" or attr.lower() == "src":
@@ -557,6 +563,11 @@ class Parser:
                             # shutil.copyfile(source, destination)
                             injected_tag[attr] = str(cached_custom_file)  # source.name
                     log.debug(f"Injecting <{section}> tag: {str(injected_tag)}")
+
+                    # adding `inner_html` as the tag's content
+                    if "inner_html" in element:
+                        injected_tag.string = element["inner_html"]
+
                     soup.find(section).append(injected_tag)
 
         injects_custom_tags("head")
@@ -621,7 +632,7 @@ class Parser:
                             style['cursor'] = "default"
                             child['style'] = style.cssText
 
-            
+
         # exports the parsed page
         html_str = str(soup)
         html_file = self.get_page_slug(url) if url != index else "index.html"
