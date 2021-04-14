@@ -127,7 +127,7 @@ def main():
                 log.critical(f"Connection error")
         else:
             if Path(args.target).is_file():
-                with open(args.target) as f:
+                with open(args.target, encoding="utf-8") as f:
                     parsed_config = toml.loads(f.read())
                     log.info(f"Initialising parser with configuration file")
                     log.debug(parsed_config)
