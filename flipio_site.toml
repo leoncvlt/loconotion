@@ -47,4 +47,5 @@ page = "https://www.notion.so/b84e0a641e8949649ff431eb897306fc"
     slug = "prices"
   [pages.cb20e16176c94a47924785317673eb75]
     slug = "sitemap"
-
+  [pages.764097f8c03440e9b4f77567faeaea58]
+    slug = "locked-projects"
