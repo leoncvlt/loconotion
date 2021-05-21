@@ -22,11 +22,11 @@ page = "https://www.notion.so/b84e0a641e8949649ff431eb897306fc"
   [[site.inject.head.script]]
   inner_html="""
   <!-- Google Tag Manager -->
-  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
   new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
   j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-  })(window,document,'script','dataLayer','GTM-N88MWVC');</script>
+  })(window,document,'script','dataLayer','GTM-N88MWVC');
   <!-- End Google Tag Manager -->
   """
 
@@ -49,3 +49,5 @@ page = "https://www.notion.so/b84e0a641e8949649ff431eb897306fc"
     slug = "sitemap"
   [pages.764097f8c03440e9b4f77567faeaea58]
     slug = "locked-projects"
+  [pages.266517f0de28477f8746c2a1c64826f5]
+    slug = "news"
