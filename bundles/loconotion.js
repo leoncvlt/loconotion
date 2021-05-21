@@ -86,3 +86,12 @@ for (let i = 0; i < anchorLinks.length; i++) {
     });
   });
 }
+
+// fix the problem with images having an annoying extra padding
+// in Webkit renderers on iOS devices
+
+const imgs = document.getElementsByTagName("img");
+
+for (let i = 0; i < imgs.length; i++) {
+  imgs[i].parentElement.setAttribute("style", "height:auto!important;");
+}
