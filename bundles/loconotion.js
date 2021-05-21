@@ -90,8 +90,9 @@ for (let i = 0; i < anchorLinks.length; i++) {
 // fix the problem with images having an annoying extra padding
 // in Webkit renderers on iOS devices
 
-const imgs = document.getElementsByTagName("img");
+const imgs = document.querySelectorAll("img:not(.notion-emoji)");
 
 for (let i = 0; i < imgs.length; i++) {
-  imgs[i].parentElement.setAttribute("style", "height:auto!important;");
+  parent = imgs[i].parentElement
+  parent.setAttribute("style", parent.getAttribute("style") + "; height:auto!important;");
 }
