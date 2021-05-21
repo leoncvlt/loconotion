@@ -13,11 +13,8 @@ page = "https://www.notion.so/b84e0a641e8949649ff431eb897306fc"
   # each key in the table maps to an atttribute in the tag
   # the following adds the tag <meta name="title" content="Loconotion Test Site"/>
   [[site.meta]]
-  name = "title"
-  content = "Флипио. Квартиры, на которых вы заработаете."
-  [[site.meta]]
   name = "description"
-  content = "Поиск квартир с дисконтом для ремонта и перепродажи."
+  content = "Поиск квартир с дисконтом для ремонта и перепродажи"
 
   [[site.inject.head.script]]
   inner_html="""
@@ -31,23 +28,66 @@ page = "https://www.notion.so/b84e0a641e8949649ff431eb897306fc"
   """
 
 [pages]
-  [pages.ca958dc1d2184df1b43207e44c010007]
-    slug = "filter"
-  [pages.a2aac2f50cd345db97125b9db0805c92]
-    slug = "contacts"
-  [pages.7a8cb4fd1afc49298815b14b9abcd85a]
-    slug = "signals"
-  [pages.b806e94595974387b0082a0eb20f0f7a]
-    slug = "analysis"
-  [pages.4c13d8dfd05f4eef8829d80a6a2654f5]
-    slug = "terms"
-  [pages.5e4108079ef441309b5f0543025ae871]
-    slug = "club"
-  [pages.abee1513f44f4fd39baffac017c14021]
-    slug = "prices"
-  [pages.cb20e16176c94a47924785317673eb75]
-    slug = "sitemap"
   [pages.764097f8c03440e9b4f77567faeaea58]
     slug = "locked-projects"
+    no-links = true
+
+    [[pages.764097f8c03440e9b4f77567faeaea58.meta]]
+      name = "description"
+      content = "Переуступка права выкупа инвестиционно-привлекательной квартиры"
+
+  [pages.ca958dc1d2184df1b43207e44c010007]
+    slug = "filter"
+
+    [[pages.ca958dc1d2184df1b43207e44c010007.meta]]
+      name = "description"
+      content = "Параметры, по которым возможна фильтрация сигналов Флипио"
+
+  [pages.a2aac2f50cd345db97125b9db0805c92]
+    slug = "contacts"
+
+    [[pages.a2aac2f50cd345db97125b9db0805c92.meta]]
+      name = "description"
+      content = "Контакты Флипио"
+
+  [pages.7a8cb4fd1afc49298815b14b9abcd85a]
+    slug = "signals"
+
+    [[pages.7a8cb4fd1afc49298815b14b9abcd85a.meta]]
+      name = "description"
+      content = "Сбор информации, обработка, рассылка сигналов подписчикам Флипио"
+
+  [pages.b806e94595974387b0082a0eb20f0f7a]
+    slug = "analysis"
+
+    [[pages.b806e94595974387b0082a0eb20f0f7a.meta]]
+      name = "description"
+      content = "Оценка объявления и конкуренты на карточке анализа Флипио"
+
+  [pages.4c13d8dfd05f4eef8829d80a6a2654f5]
+    slug = "terms"
+
+    [[pages.4c13d8dfd05f4eef8829d80a6a2654f5.meta]]
+      name = "description"
+      content = "Термины и формулы, используемые во флиппинге (покупке, ремонте и перепродаже квартир)"
+
+  [pages.5e4108079ef441309b5f0543025ae871]
+    slug = "club"
+
+    [[pages.5e4108079ef441309b5f0543025ae871.meta]]
+      name = "description"
+      content = "Клуб флипперов - сообщество профессионалов, занимающихся покупкой, ремонтом и перепродажей квартир"
+
+  [pages.abee1513f44f4fd39baffac017c14021]
+    slug = "prices"
+
+    [[pages.abee1513f44f4fd39baffac017c14021.meta]]
+      name = "description"
+      content = "Продукты Флипио - сигналы, анализ, переуступка прав выкупа инвестиционно-привлекательных проектов"
+
+  [pages.cb20e16176c94a47924785317673eb75]
+    slug = "sitemap"
+
   [pages.266517f0de28477f8746c2a1c64826f5]
     slug = "news"
+    no-links = true
