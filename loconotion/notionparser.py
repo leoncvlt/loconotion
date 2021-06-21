@@ -309,7 +309,7 @@ class Parser:
                     )
                     if not is_toggled:
                         # click on it, then wait until all elements are displayed
-                        toggle_button.click()
+                        self.driver.execute_script("arguments[0].click();", toggle_button)
                         try:
                             WebDriverWait(self.driver, timeout).until(
                                 toggle_block_has_opened(toggle_block)
