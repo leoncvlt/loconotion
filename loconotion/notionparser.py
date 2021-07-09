@@ -341,7 +341,7 @@ class Parser:
         # remove scripts and other tags we don't want / need
         for unwanted in soup.findAll("script"):
             unwanted.decompose()
-        for intercom_frame in soup.findAll("div", {"id": "intercom-frame"}):
+        for intercom_frame in soup.findAll("iframe", {"id": "intercom-frame"}):
             intercom_frame.decompose()
         for intercom_div in soup.findAll("div", {"class": "intercom-lightweight-app"}):
             intercom_div.decompose()
