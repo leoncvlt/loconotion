@@ -1,3 +1,4 @@
+from notionparser import Parser
 import os
 import sys
 import logging
@@ -11,10 +12,9 @@ try:
     import requests
     import toml
 except ModuleNotFoundError as error:
-    log.critical(f"ModuleNotFoundError: {error}. have your installed the requirements?")
+    log.critical(
+        f"ModuleNotFoundError: {error}. have your installed the requirements?")
     sys.exit()
-
-from notionparser import Parser
 
 
 def main():
@@ -78,7 +78,8 @@ def main():
     log.addHandler(log_screen_handler)
     log.propagate = False
     try:
-        import colorama, copy
+        import colorama
+        import copy
 
         LOG_COLORS = {
             logging.DEBUG: colorama.Fore.GREEN,
@@ -117,7 +118,7 @@ def main():
         if urllib.parse.urlparse(args.target).scheme:
             try:
                 response = requests.get(args.target)
-                if "notion.so" in args.target:
+                if "notion.so" in args.target or "notion.site" in args.target:
                     log.info("Initialising parser with simple page url")
                     config = {"page": args.target}
                     Parser(config=config, args=vars(args))

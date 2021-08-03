@@ -309,7 +309,7 @@ class Parser:
                     )
                     if not is_toggled:
                         # click on it, then wait until all elements are displayed
-                        toggle_button.click()
+                        self.driver.execute_script("arguments[0].click();", toggle_button)
                         try:
                             WebDriverWait(self.driver, timeout).until(
                                 toggle_block_has_opened(toggle_block)
@@ -341,7 +341,7 @@ class Parser:
         # remove scripts and other tags we don't want / need
         for unwanted in soup.findAll("script"):
             unwanted.decompose()
-        for intercom_frame in soup.findAll("div", {"id": "intercom-frame"}):
+        for intercom_frame in soup.findAll("iframe", {"id": "intercom-frame"}):
             intercom_frame.decompose()
         for intercom_div in soup.findAll("div", {"class": "intercom-lightweight-app"}):
             intercom_div.decompose()
