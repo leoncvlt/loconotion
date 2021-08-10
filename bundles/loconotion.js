@@ -94,5 +94,8 @@ const imgs = document.querySelectorAll("img:not(.notion-emoji)");
 
 for (let i = 0; i < imgs.length; i++) {
   parent = imgs[i].parentElement
-  parent.setAttribute("style", parent.getAttribute("style") + "; height:auto!important;");
+  let style = parent.getAttribute("style")
+  style = style.replace(/padding-bottom: 133\.333\%;/, "")
+  style = style + "; height:auto!important;"
+  parent.setAttribute("style",  style);
 }
