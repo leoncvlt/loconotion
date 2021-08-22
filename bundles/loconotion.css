@@ -16,7 +16,13 @@ div[role="button"]:not(.notion-record-icon):hover {
 /* stops inline databases from overflowing horizontally */
 .notion-frame {
   max-width: 100%;
+  width: 100vw !important;
 }
+
+.notion-selectable {
+  max-width: 100% !important;
+}
+
 .notion-scroller .notion-collection_view-block {
   width: 100% !important;
   max-width: 100% !important;
