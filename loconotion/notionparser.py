@@ -573,8 +573,8 @@ class Parser:
             "script", type="text/javascript", src=str(loconotion_custom_js)
         )
         soup.body.insert(-1, custom_script)
-        log.info(f"Got this as main page URL>> {url}")
-
+        
+        ## extract the custom domain from links of type https://xxxx.notion.site
         hrefDomain = url.split('notion.site')[0] + 'notion.site'
         # find sub-pages and clean slugs / links
         sub_pages = []
@@ -583,8 +583,8 @@ class Parser:
             sub_page_href = a["href"]
             
             if sub_page_href.startswith("/"):
+                # spliting the href to avoid creating subfolders in case of links like https://xxxx.notion.site/xxxx
                 sub_page_href = hrefDomain + '/'+ a["href"].split('/')[len(a["href"].split('/'))-1]
-                log.info(f"Got this as href {sub_page_href}")
             if sub_page_href.startswith(hrefDomain):
                 if parse_links or not len(a.find_parents("div", class_="notion-scroller")):
                     # if the link is an anchor link,
@@ -636,8 +636,6 @@ class Parser:
                 " in the configuration files are unique"
             )
         log.info(f"Exporting page '{url}' as '{html_file}'")
-        myfile = Path(self.dist_folder / html_file)
-        myfile.touch(exist_ok=True)
         with open(self.dist_folder / html_file, "wb") as f:
             f.write(html_str.encode("utf-8").strip())
         processed_pages[url] = html_file
