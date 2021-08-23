@@ -573,15 +573,19 @@ class Parser:
             "script", type="text/javascript", src=str(loconotion_custom_js)
         )
         soup.body.insert(-1, custom_script)
+        log.info(f"Got this as main page URL>> {url}")
 
+        hrefDomain = url.split('notion.site')[0] + 'notion.site'
         # find sub-pages and clean slugs / links
         sub_pages = []
         parse_links = not self.get_page_config(url).get("no-links", False)
         for a in soup.find_all('a', href=True):
             sub_page_href = a["href"]
+            
             if sub_page_href.startswith("/"):
-                sub_page_href = "https://www.notion.so" + a["href"]
-            if sub_page_href.startswith("https://www.notion.so/"):
+                sub_page_href = hrefDomain + '/'+ a["href"].split('/')[len(a["href"].split('/'))-1]
+                log.info(f"Got this as href {sub_page_href}")
+            if sub_page_href.startswith(hrefDomain):
                 if parse_links or not len(a.find_parents("div", class_="notion-scroller")):
                     # if the link is an anchor link,
                     # check if the page hasn't already been parsed
@@ -632,6 +636,8 @@ class Parser:
                 " in the configuration files are unique"
             )
         log.info(f"Exporting page '{url}' as '{html_file}'")
+        myfile = Path(self.dist_folder / html_file)
+        myfile.touch(exist_ok=True)
         with open(self.dist_folder / html_file, "wb") as f:
             f.write(html_str.encode("utf-8").strip())
         processed_pages[url] = html_file
