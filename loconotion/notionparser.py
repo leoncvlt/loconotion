@@ -10,6 +10,7 @@ import mimetypes
 import urllib.parse
 import hashlib
 from pathlib import Path
+from fileorganizer import *
 
 log = logging.getLogger(f"loconotion.{__name__}")
 
@@ -573,19 +574,15 @@ class Parser:
             "script", type="text/javascript", src=str(loconotion_custom_js)
         )
         soup.body.insert(-1, custom_script)
-        
-        ## extract the custom domain from links of type https://xxxx.notion.site
-        hrefDomain = url.split('notion.site')[0] + 'notion.site'
+
         # find sub-pages and clean slugs / links
         sub_pages = []
         parse_links = not self.get_page_config(url).get("no-links", False)
         for a in soup.find_all('a', href=True):
             sub_page_href = a["href"]
-            
             if sub_page_href.startswith("/"):
-                # spliting the href to avoid creating subfolders in case of links like https://xxxx.notion.site/xxxx
-                sub_page_href = hrefDomain + '/'+ a["href"].split('/')[len(a["href"].split('/'))-1]
-            if sub_page_href.startswith(hrefDomain):
+                sub_page_href = "https://www.notion.so" + a["href"]
+            if sub_page_href.startswith("https://www.notion.so/"):
                 if parse_links or not len(a.find_parents("div", class_="notion-scroller")):
                     # if the link is an anchor link,
                     # check if the page hasn't already been parsed
@@ -667,6 +664,7 @@ class Parser:
             int(elapsed_time % 60),
             tot_processed_pages,
         )
+        organize(self.dist_folder)
         log.info(
             f"Finished!\n\nProcessed {len(tot_processed_pages)} pages in {formatted_time}"
         )
