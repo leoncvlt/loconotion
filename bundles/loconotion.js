@@ -86,3 +86,16 @@ for (let i = 0; i < anchorLinks.length; i++) {
     });
   });
 }
+
+// fix the problem with images having an annoying extra padding
+// in Webkit renderers on iOS devices
+
+const imgs = document.querySelectorAll("img:not(.notion-emoji)");
+
+for (let i = 0; i < imgs.length; i++) {
+  parent = imgs[i].parentElement
+  let style = parent.getAttribute("style")
+  style = style.replace(/padding-bottom: 133\.333\%;/, "")
+  style = style + "; height:auto!important;"
+  parent.setAttribute("style",  style);
+}
