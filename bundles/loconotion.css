@@ -16,7 +16,13 @@ div[role="button"]:not(.notion-record-icon):hover {
 /* stops inline databases from overflowing horizontally */
 .notion-frame {
   max-width: 100%;
+  width: 100vw !important;
 }
+
+.notion-selectable {
+  max-width: 100% !important;
+}
+
 .notion-scroller .notion-collection_view-block {
   width: 100% !important;
   max-width: 100% !important;
@@ -131,4 +137,30 @@ a[data-token-index] svg.page {
   .notion-list-view > .notion-collection_view_page-block {
     width: fit-content;
   }
+}
+
+.pseudoAfter:after {
+  color: var(--pseudoAfter--color);
+  content: var(--pseudoAfter--content);
+  border: var(--pseudoAfter--border);
+  width: var(--pseudoAfter--width);
+  height: var(--pseudoAfter--height);
+  display: var(--pseudoAfter--display);
+  background: var(--pseudoAfter--background);
+}
+
+.pseudoBefore:before {
+  color: var(--pseudoBefore--color);
+  content: var(--pseudoBefore--content);
+  border: var(--pseudoBefore--border);
+  width: var(--pseudoBefore--width);
+  height: var(--pseudoBefore--height);
+  display: var(--pseudoBefore--display) !important;
+  background: var(--pseudoBefore--background);
+}
+
+.pseudoSelection ::selection {
+  color: var(--pseudoSelection--color);
+  background: var(--pseudoSelection--background);
+  text-shadow: var(--pseudoSelection--textShadow);
 }
