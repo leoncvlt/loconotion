@@ -107,6 +107,7 @@ a[data-token-index] svg.page {
   .notion-frame > .notion-scroller > .notion-scroller > .notion-calendar-view {
     padding-right: 2em !important;
     padding-left: 2em !important;
+    flex-wrap: wrap
   }
 
   /* collapses flex rows into columns */
@@ -137,6 +138,14 @@ a[data-token-index] svg.page {
   .notion-list-view > .notion-collection_view_page-block {
     width: fit-content;
   }
+
+  .notion-scroller
+  > div:nth-child(2):not(.notion-page-content)
+  > div:not([data-block-id])
+  div:not(.notion-page-details-controls) {
+  padding-left: 0!important;
+  padding-right: 0!important;
+}
 }
 
 .pseudoAfter:after {
