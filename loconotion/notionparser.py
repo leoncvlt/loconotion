@@ -10,6 +10,7 @@ import mimetypes
 import urllib.parse
 import hashlib
 from pathlib import Path
+from fileorganizer import *
 
 log = logging.getLogger(f"loconotion.{__name__}")
 
@@ -667,6 +668,7 @@ class Parser:
             int(elapsed_time % 60),
             tot_processed_pages,
         )
+        organize(self.dist_folder)
         log.info(
             f"Finished!\n\nProcessed {len(tot_processed_pages)} pages in {formatted_time}"
         )
