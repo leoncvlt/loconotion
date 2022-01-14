@@ -9,7 +9,7 @@ import glob
 import mimetypes
 import urllib.parse
 import hashlib
-from pathlib import Path
+from pathlib import Path, PurePath
 
 log = logging.getLogger(f"loconotion.{__name__}")
 
@@ -563,12 +563,14 @@ class Parser:
         injects_custom_tags("body")
 
         # inject loconotion's custom stylesheet and script
-        loconotion_custom_css = self.cache_file(Path("bundles/loconotion.css"))
+        current_dir = Path(__file__).parent
+
+        loconotion_custom_css = self.cache_file((current_dir / '../bundles/loconotion.css').resolve())
         custom_css = soup.new_tag(
             "link", rel="stylesheet", href=str(loconotion_custom_css)
         )
         soup.head.insert(-1, custom_css)
-        loconotion_custom_js = self.cache_file(Path("bundles/loconotion.js"))
+        loconotion_custom_js = self.cache_file((current_dir / '../bundles/loconotion.js').resolve())
         custom_script = soup.new_tag(
             "script", type="text/javascript", src=str(loconotion_custom_js)
         )
