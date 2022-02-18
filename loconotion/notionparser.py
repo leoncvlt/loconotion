@@ -243,14 +243,23 @@ class Parser:
             options=chrome_options,
         )
 
-    def parse_page(self, url, processed_pages={}, index=None):
+    def parse_page(self, url: str, index: str = None):
+        """Parse page at url and write it to file, then recursively parse all subpages.
+
+        Args:
+            url (str): URL of the page to parse.
+            index (str, optional): URL of the index page. Defaults to None.
+
+        After the page at `url` has been parsed, calls itself recursively for every subpage
+        it has discovered.
+        """
         log.info(f"Parsing page '{url}'")
         log.debug(f"Using page config: {self.get_page_config(url)}")
 
         try:
             self.load(url)
             if not index:
-                # if this is the first page being parse, set it as the index.html
+                # if this is the first page being parsed, set it as the index.html
                 index = url
                 # if dark theme is enabled, set local storage item and re-load the page
                 if self.args.get("dark_theme", True):
@@ -454,7 +463,7 @@ class Parser:
                     f.seek(0)
                     f.truncate()
                     f.write(stylesheet.cssText)
-                        
+
                 link["href"] = str(cached_css_file)
 
         # add our custom logic to all toggle blocks
@@ -595,7 +604,7 @@ class Parser:
                         a["href"] = "#" + sub_page_href_tokens[-1]
                         a["class"] = a.get("class", []) + ["loconotion-anchor-link"]
                         if (
-                                sub_page_href in processed_pages.keys()
+                                sub_page_href in self.processed_pages.keys()
                                 or sub_page_href in sub_pages
                         ):
                             log.debug(
@@ -625,11 +634,10 @@ class Parser:
                             style['cursor'] = "default"
                             child['style'] = style.cssText
 
-            
         # exports the parsed page
         html_str = str(soup)
         html_file = self.get_page_slug(url) if url != index else "index.html"
-        if html_file in processed_pages.values():
+        if html_file in self.processed_pages.values():
             log.error(
                 f"Found duplicate pages with slug '{html_file}' - previous one will be"
                 " overwritten. Make sure that your notion pages names or custom slugs"
@@ -638,20 +646,15 @@ class Parser:
         log.info(f"Exporting page '{url}' as '{html_file}'")
         with open(self.dist_folder / html_file, "wb") as f:
             f.write(html_str.encode("utf-8").strip())
-        processed_pages[url] = html_file
+        self.processed_pages[url] = html_file
 
         # parse sub-pages
         if sub_pages and not self.args.get("single_page", False):
-            if processed_pages:
-                log.debug(f"Pages processed so far: {len(processed_pages)}")
+            if self.processed_pages:
+                log.debug(f"Pages processed so far: {len(self.processed_pages)}")
             for sub_page in sub_pages:
-                if not sub_page in processed_pages.keys():
-                    self.parse_page(
-                        sub_page, processed_pages=processed_pages, index=index
-                    )
-
-        # we're all done!
-        return processed_pages
+                if not sub_page in self.processed_pages.keys():
+                    self.parse_page(sub_page, index=index)
 
     def load(self, url):
         self.driver.get(url)
@@ -659,14 +662,14 @@ class Parser:
 
     def run(self, url):
         start_time = time.time()
-        tot_processed_pages = self.parse_page(url)
+        self.processed_pages = {}
+        self.parse_page(url)
         elapsed_time = time.time() - start_time
         formatted_time = "{:02d}:{:02d}:{:02d}".format(
             int(elapsed_time // 3600),
             int(elapsed_time % 3600 // 60),
             int(elapsed_time % 60),
-            tot_processed_pages,
         )
         log.info(
-            f"Finished!\n\nProcessed {len(tot_processed_pages)} pages in {formatted_time}"
+            f"Finished!\n\nProcessed {len(self.processed_pages)} pages in {formatted_time}"
         )
