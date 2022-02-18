@@ -1,19 +1,23 @@
-from notionparser import Parser
+import argparse
+import copy
+import logging
 import os
 import sys
-import logging
 import urllib.parse
-import argparse
 from pathlib import Path
+
+from notionparser import Parser
 
 log = logging.getLogger("loconotion")
 
 try:
+    import colorama
     import requests
     import toml
+
 except ModuleNotFoundError as error:
     log.critical(
-        f"ModuleNotFoundError: {error}. have your installed the requirements?")
+        f"ModuleNotFoundError: {error}. Have you installed the requirements?")
     sys.exit()
 
 
@@ -87,9 +91,6 @@ def setup_logging(args):
     log.addHandler(log_screen_handler)
     log.propagate = False
     try:
-        import colorama
-        import copy
-
         LOG_COLORS = {
             logging.DEBUG: colorama.Fore.GREEN,
             logging.INFO: colorama.Fore.BLUE,
