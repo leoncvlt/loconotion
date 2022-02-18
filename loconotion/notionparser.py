@@ -181,8 +181,10 @@ class Parser:
                             content_type = response.headers.get("content-type")
                             if content_type:
                                 file_extension = mimetypes.guess_extension(content_type)
-                        elif '%3f' in file_extension.lower():
-                            file_extension = re.split("%3f", file_extension, flags=re.IGNORECASE)[0]
+                        elif "%3f" in file_extension.lower():
+                            file_extension = re.split(
+                                "%3f", file_extension, flags=re.IGNORECASE
+                            )[0]
                         destination = destination.with_suffix(file_extension)
 
                     Path(destination).parent.mkdir(parents=True, exist_ok=True)
@@ -228,8 +230,8 @@ class Parser:
         if not self.args.get("non_headless", False):
             chrome_options.add_argument("--headless")
             chrome_options.add_argument("window-size=1920,1080")
-            chrome_options.add_argument('--no-sandbox')
-            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--log-level=3")
         chrome_options.add_argument("--silent")
         chrome_options.add_argument("--disable-logging")
@@ -302,14 +304,18 @@ class Parser:
         # if dark theme is enabled, set local storage item and re-load the page
         if self.args.get("dark_theme", True):
             log.debug("Dark theme is enabled")
-            self.driver.execute_script("window.localStorage.setItem('theme','{\"mode\":\"dark\"}');")
+            self.driver.execute_script(
+                "window.localStorage.setItem('theme','{\"mode\":\"dark\"}');"
+            )
             self.load(url)
 
         # light theme is on by default
         # enable dark mode based on https://fruitionsite.com/ dark mode hack
-        if self.config.get('theme') == 'dark':
-            self.driver.execute_script("__console.environment.ThemeStore.setState({ mode: 'dark' });")
-\
+        if self.config.get("theme") == "dark":
+            self.driver.execute_script(
+                "__console.environment.ThemeStore.setState({ mode: 'dark' });"
+            )
+
     def scroll_to_the_bottom(self):
         # scroll at the bottom of the notion-scroller element to load all elements
         # continue once there are no changes in height after a timeout
@@ -392,7 +398,9 @@ class Parser:
             vendors_css.decompose()
 
         # collection selectors (List, Gallery, etc.) don't work, so remove them
-        for collection_selector in soup.findAll("div", {"class": "notion-collection-view-select"}):
+        for collection_selector in soup.findAll(
+            "div", {"class": "notion-collection-view-select"}
+        ):
             collection_selector.decompose()
 
         # clean up the default notion meta tags
@@ -456,10 +464,10 @@ class Parser:
                 style = cssutils.parseStyle(img["style"])
                 spritesheet = style["background"]
                 spritesheet_url = spritesheet[
-                                  spritesheet.find("(") + 1: spritesheet.find(")")
-                                  ]
+                    spritesheet.find("(") + 1 : spritesheet.find(")")
+                ]
                 cached_spritesheet_url = self.cache_file(
-                    f'https://www.notion.so{spritesheet_url}'
+                    f"https://www.notion.so{spritesheet_url}"
                 )
 
                 style["background"] = spritesheet.replace(
@@ -474,10 +482,14 @@ class Parser:
                 # we don't need the vendors stylesheet
                 if "vendors~" in link["href"]:
                     continue
-                cached_css_file = self.cache_file(f'https://www.notion.so{link["href"]}')
+                cached_css_file = self.cache_file(
+                    f'https://www.notion.so{link["href"]}'
+                )
                 # files in the css file might be reference with a relative path,
                 # so store the path of the current css file
-                parent_css_path = os.path.split(urllib.parse.urlparse(link["href"]).path)[0]
+                parent_css_path = os.path.split(
+                    urllib.parse.urlparse(link["href"]).path
+                )[0]
                 # open the locally saved file
                 with open(self.dist_folder / cached_css_file, "rb+") as f:
                     stylesheet = cssutils.parseString(f.read())
@@ -490,9 +502,19 @@ class Parser:
                                 rule.style["src"].split("url(")[-1].split(")")[0]
                             )
                             # assemble the url given the current css path
-                            font_url = "/".join(p.strip("/") for p in ["https://www.notion.so", parent_css_path, font_file] if p.strip("/"))
+                            font_url = "/".join(
+                                p.strip("/")
+                                for p in [
+                                    "https://www.notion.so",
+                                    parent_css_path,
+                                    font_file,
+                                ]
+                                if p.strip("/")
+                            )
                             # don't hash the font files filenames, rather get filename only
-                            cached_font_file = self.cache_file(font_url, Path(font_file).name)
+                            cached_font_file = self.cache_file(
+                                font_url, Path(font_file).name
+                            )
                             rule.style["src"] = f"url({cached_font_file})"
                     # commit stylesheet edits to file
                     f.seek(0)
@@ -526,14 +548,20 @@ class Parser:
         # the link to the row item is equal to its data-block-id without dashes
         for table_view in soup.findAll("div", {"class": "notion-table-view"}):
             for table_row in table_view.findAll(
-                    "div", {"class": "notion-collection-item"}
+                "div", {"class": "notion-collection-item"}
             ):
                 table_row_block_id = table_row["data-block-id"]
                 table_row_href = "/" + table_row_block_id.replace("-", "")
                 row_target_span = table_row.find("span")
-                row_target_span["style"] = row_target_span["style"].replace("pointer-events: none;","")
+                row_target_span["style"] = row_target_span["style"].replace(
+                    "pointer-events: none;", ""
+                )
                 row_link_wrapper = soup.new_tag(
-                    "a", attrs={"href": table_row_href, "style": "cursor: pointer; color: inherit; text-decoration: none; fill: inherit;"}
+                    "a",
+                    attrs={
+                        "href": table_row_href,
+                        "style": "cursor: pointer; color: inherit; text-decoration: none; fill: inherit;",
+                    },
                 )
                 row_target_span.wrap(row_link_wrapper)
 
@@ -609,7 +637,7 @@ class Parser:
                         # destination = (self.dist_folder / source.name)
                         # shutil.copyfile(source, destination)
                         injected_tag[attr] = str(cached_custom_file)  # source.name
-                log.debug(f'Injecting <{section}> tag: {injected_tag}')
+                log.debug(f"Injecting <{section}> tag: {injected_tag}")
                 soup.find(section).append(injected_tag)
 
     def inject_loconotion_script_and_css(self, soup):
@@ -629,23 +657,27 @@ class Parser:
         # find sub-pages and clean slugs / links
         subpages = []
         parse_links = not self.get_page_config(url).get("no-links", False)
-        for a in soup.find_all('a', href=True):
+        for a in soup.find_all("a", href=True):
             sub_page_href = a["href"]
             if sub_page_href.startswith("/"):
-                sub_page_href = f'{hrefDomain}/{a["href"].split("/")[len(a["href"].split("/"))-1]}'
+                sub_page_href = (
+                    f'{hrefDomain}/{a["href"].split("/")[len(a["href"].split("/"))-1]}'
+                )
                 log.info(f"Got this as href {sub_page_href}")
             if sub_page_href.startswith(hrefDomain):
-                if parse_links or not len(a.find_parents("div", class_="notion-scroller")):
+                if parse_links or not len(
+                    a.find_parents("div", class_="notion-scroller")
+                ):
                     # if the link is an anchor link,
                     # check if the page hasn't already been parsed
                     if "#" in sub_page_href:
                         sub_page_href_tokens = sub_page_href.split("#")
                         sub_page_href = sub_page_href_tokens[0]
-                        a["href"] = f'#{sub_page_href_tokens[-1]}'
+                        a["href"] = f"#{sub_page_href_tokens[-1]}"
                         a["class"] = a.get("class", []) + ["loconotion-anchor-link"]
                         if (
-                                sub_page_href in self.processed_pages.keys()
-                                or sub_page_href in subpages
+                            sub_page_href in self.processed_pages.keys()
+                            or sub_page_href in subpages
                         ):
                             log.debug(
                                 f"Original page for anchor link {sub_page_href}"
@@ -668,11 +700,11 @@ class Parser:
                     del a["href"]
                     a.name = "span"
                     # remove pointer cursor styling on the link and all children
-                    for child in ([a] + a.find_all()):
-                        if (child.has_attr("style")):
-                            style = cssutils.parseStyle(child['style'])
-                            style['cursor'] = "default"
-                            child['style'] = style.cssText
+                    for child in [a] + a.find_all():
+                        if child.has_attr("style"):
+                            style = cssutils.parseStyle(child["style"])
+                            style["cursor"] = "default"
+                            child["style"] = style.cssText
         return subpages
 
     def export_parsed_page(self, url, index, soup):

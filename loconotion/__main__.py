@@ -16,8 +16,7 @@ try:
     import toml
 
 except ModuleNotFoundError as error:
-    log.critical(
-        f"ModuleNotFoundError: {error}. Have you installed the requirements?")
+    log.critical(f"ModuleNotFoundError: {error}. Have you installed the requirements?")
     sys.exit()
 
 
@@ -43,7 +42,9 @@ def get_args():
         help="Use a specific chromedriver executable instead of the auto-installing one",
     )
     argparser.add_argument(
-        "--single-page", action="store_true", help="Only parse the first page, then stop"
+        "--single-page",
+        action="store_true",
+        help="Only parse the first page, then stop",
     )
     argparser.add_argument(
         "--dark-theme",
@@ -133,7 +134,7 @@ def init_parser(args, log):
             try:
                 requests.get(args.target)
             except requests.ConnectionError as exception:
-                log.critical('Connection error')
+                log.critical("Connection error")
 
             if "notion.so" in args.target or "notion.site" in args.target:
                 log.info("Initialising parser with simple page url")
@@ -145,12 +146,12 @@ def init_parser(args, log):
         elif Path(args.target).is_file():
             with open(args.target, encoding="utf-8") as f:
                 parsed_config = toml.loads(f.read())
-                log.info('Initialising parser with configuration file')
+                log.info("Initialising parser with configuration file")
                 log.debug(parsed_config)
                 parser = Parser(config=parsed_config, args=vars(args))
 
         else:
-            log.critical(f"Config file {args.target} does not exists")
+            log.critical(f"Config file {args.target} does not exist")
 
     except FileNotFoundError as e:
         log.critical(f"FileNotFoundError: {e}")
