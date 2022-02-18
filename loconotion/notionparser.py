@@ -507,27 +507,8 @@ class Parser:
         # inject any custom elements to the page
         custom_injects = self.get_page_config(url).get("inject", {})
 
-        def injects_custom_tags(section):
-            section_custom_injects = custom_injects.get(section, {})
-            for tag, elements in section_custom_injects.items():
-                for element in elements:
-                    injected_tag = soup.new_tag(tag)
-                    for attr, value in element.items():
-                        injected_tag[attr] = value
-                        # if the value refers to a file, copy it to the dist folder
-                        if attr.lower() == "href" or attr.lower() == "src":
-                            log.debug(f"Copying injected file '{value}'")
-                            cached_custom_file = self.cache_file(
-                                (Path.cwd() / value.strip("/"))
-                            )
-                            # destination = (self.dist_folder / source.name)
-                            # shutil.copyfile(source, destination)
-                            injected_tag[attr] = str(cached_custom_file)  # source.name
-                    log.debug(f"Injecting <{section}> tag: {str(injected_tag)}")
-                    soup.find(section).append(injected_tag)
-
-        injects_custom_tags("head")
-        injects_custom_tags("body")
+        self.inject_custom_tags("head", soup, custom_injects)
+        self.inject_custom_tags("body", soup, custom_injects)
 
         # inject loconotion's custom stylesheet and script
         loconotion_custom_css = self.cache_file(Path("bundles/loconotion.css"))
@@ -659,6 +640,32 @@ class Parser:
         if len(new_toggle_blocks) > len(toggle_blocks):
             # if so, run the function again
             self.open_toggle_blocks(timeout, opened_toggles)
+
+    def inject_custom_tags(self, section: str, soup, custom_injects: dict):
+        """Inject custom tags to the given section.
+
+        Args:
+            section (str): Section / tag name to insert into.
+            soup (BeautifulSoup): a BeautifulSoup element holding the whole page.
+            custom_injects (dict): description of custom tags to inject.
+        """
+        section_custom_injects = custom_injects.get(section, {})
+        for tag, elements in section_custom_injects.items():
+            for element in elements:
+                injected_tag = soup.new_tag(tag)
+                for attr, value in element.items():
+                    injected_tag[attr] = value
+                    # if the value refers to a file, copy it to the dist folder
+                    if attr.lower() in ["href", "src"]:
+                        log.debug(f"Copying injected file '{value}'")
+                        cached_custom_file = self.cache_file(
+                            (Path.cwd() / value.strip("/"))
+                        )
+                        # destination = (self.dist_folder / source.name)
+                        # shutil.copyfile(source, destination)
+                        injected_tag[attr] = str(cached_custom_file)  # source.name
+                log.debug(f'Injecting <{section}> tag: {injected_tag}')
+                soup.find(section).append(injected_tag)
 
     def load(self, url):
         self.driver.get(url)
