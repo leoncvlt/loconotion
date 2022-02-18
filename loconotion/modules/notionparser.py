@@ -35,17 +35,19 @@ class Parser:
     def __init__(self, config={}, args={}):
         self.config = config
         self.args = args
-        url = self.config.get("page", None)
-        if not url:
+        index_url = self.config.get("page", None)
+        if not index_url:
             log.critical(
                 "No initial page url specified. If passing a configuration file,"
-                " make sure it contains a 'page' key with the url of the notion.so"
+                " make sure it contains a 'page' key with the url of the notion.site"
                 " page to parse"
             )
             return
 
         # get the site name from the config, or make it up by cleaning the target page's slug
-        site_name = self.config.get("name", self.get_page_slug(url, extension=False))
+        site_name = self.config.get("name", self.get_page_slug(index_url, extension=False))
+
+        self.index_url = index_url
 
         # set the output folder based on the site name
         self.dist_folder = Path(config.get("output", Path("dist") / site_name))
@@ -80,7 +82,7 @@ class Parser:
         # initialize chromedriver
         self.driver = self.init_chromedriver()
 
-        self.starting_url = url
+        self.starting_url = index_url
 
     def get_page_config(self, token):
         # starts by grabbing the gobal site configuration table, if exists
@@ -243,21 +245,17 @@ class Parser:
             options=chrome_options,
         )
 
-    def parse_page(self, url: str, index: str = None):
+    def parse_page(self, url: str):
         """Parse page at url and write it to file, then recursively parse all subpages.
 
         Args:
             url (str): URL of the page to parse.
-            index (str, optional): URL of the index page. Defaults to None.
 
         After the page at `url` has been parsed, calls itself recursively for every subpage
         it has discovered.
         """
         log.info(f"Parsing page '{url}'")
         log.debug(f"Using page config: {self.get_page_config(url)}")
-
-        if not index:  # if this is the first page being parsed
-            index = url  # set it as the index.html
 
         try:
             self.load_correct_theme(url)
@@ -294,9 +292,9 @@ class Parser:
         hrefDomain = f'{url.split("notion.site")[0]}notion.site'
         log.info(f"Got the domain as {hrefDomain}")
 
-        subpages = self.find_subpages(url, index, soup, hrefDomain)
-        self.export_parsed_page(url, index, soup)
-        self.parse_subpages(index, subpages)
+        subpages = self.find_subpages(url, soup, hrefDomain)
+        self.export_parsed_page(url, soup)
+        self.parse_subpages(subpages)
 
     def load_correct_theme(self, url):
         self.load(url)
@@ -653,7 +651,7 @@ class Parser:
         )
         soup.body.insert(-1, custom_script)
 
-    def find_subpages(self, url, index, soup, hrefDomain):
+    def find_subpages(self, url, soup, hrefDomain):
         # find sub-pages and clean slugs / links
         subpages = []
         parse_links = not self.get_page_config(url).get("no-links", False)
@@ -687,7 +685,7 @@ class Parser:
                     else:
                         a["href"] = (
                             self.get_page_slug(sub_page_href)
-                            if sub_page_href != index
+                            if sub_page_href != self.index_url
                             else "index.html"
                         )
                     subpages.append(sub_page_href)
@@ -707,10 +705,10 @@ class Parser:
                             child["style"] = style.cssText
         return subpages
 
-    def export_parsed_page(self, url, index, soup):
+    def export_parsed_page(self, url, soup):
         # exports the parsed page
         html_str = str(soup)
-        html_file = self.get_page_slug(url) if url != index else "index.html"
+        html_file = self.get_page_slug(url) if url != self.index_url else "index.html"
         if html_file in self.processed_pages.values():
             log.error(
                 f"Found duplicate pages with slug '{html_file}' - previous one will be"
@@ -722,14 +720,14 @@ class Parser:
             f.write(html_str.encode("utf-8").strip())
         self.processed_pages[url] = html_file
 
-    def parse_subpages(self, index, subpages):
+    def parse_subpages(self, subpages):
         # parse sub-pages
         if subpages and not self.args.get("single_page", False):
             if self.processed_pages:
                 log.debug(f"Pages processed so far: {len(self.processed_pages)}")
             for sub_page in subpages:
                 if sub_page not in self.processed_pages.keys():
-                    self.parse_page(sub_page, index=index)
+                    self.parse_page(sub_page)
 
     def load(self, url):
         self.driver.get(url)
