@@ -18,7 +18,14 @@ except ModuleNotFoundError as error:
 
 
 def main():
-    # set up argument parser
+    args = get_args()
+    log = setup_logging(args)
+    parser = init_parser(args, log)
+    parser.run()
+
+
+def get_args():
+    # set up argument parser and return parsed args
     argparser = argparse.ArgumentParser(
         description="Generate static websites from Notion.so pages"
     )
@@ -69,8 +76,10 @@ def main():
     argparser.add_argument(
         "-v", "--verbose", action="store_true", help="Increase output log verbosity"
     )
-    args = argparser.parse_args()
+    return argparser.parse_args()
 
+
+def setup_logging(args):
     # set up some pretty logs
     log = logging.getLogger("loconotion")
     log.setLevel(logging.INFO if not args.verbose else logging.DEBUG)
@@ -113,31 +122,40 @@ def main():
     except ModuleNotFoundError as identifier:
         pass
 
-    # initialise and run the website parser
+    return log
+
+
+def init_parser(args, log):
+    # initialise the website parser
     try:
         if urllib.parse.urlparse(args.target).scheme:
             try:
-                response = requests.get(args.target)
-                if "notion.so" in args.target or "notion.site" in args.target:
-                    log.info("Initialising parser with simple page url")
-                    config = {"page": args.target}
-                    Parser(config=config, args=vars(args))
-                else:
-                    log.critical(f"{args.target} is not a notion.so page")
+                requests.get(args.target)
             except requests.ConnectionError as exception:
-                log.critical(f"Connection error")
-        else:
-            if Path(args.target).is_file():
-                with open(args.target, encoding="utf-8") as f:
-                    parsed_config = toml.loads(f.read())
-                    log.info(f"Initialising parser with configuration file")
-                    log.debug(parsed_config)
-                    Parser(config=parsed_config, args=vars(args))
+                log.critical('Connection error')
+
+            if "notion.so" in args.target or "notion.site" in args.target:
+                log.info("Initialising parser with simple page url")
+                config = {"page": args.target}
+                parser = Parser(config=config, args=vars(args))
             else:
-                log.critical(f"Config file {args.target} does not exists")
+                log.critical(f"{args.target} is not a notion.so page")
+
+        elif Path(args.target).is_file():
+            with open(args.target, encoding="utf-8") as f:
+                parsed_config = toml.loads(f.read())
+                log.info('Initialising parser with configuration file')
+                log.debug(parsed_config)
+                parser = Parser(config=parsed_config, args=vars(args))
+
+        else:
+            log.critical(f"Config file {args.target} does not exists")
+
     except FileNotFoundError as e:
         log.critical(f"FileNotFoundError: {e}")
         sys.exit(0)
+
+    return parser
 
 
 if __name__ == "__main__":

@@ -77,9 +77,10 @@ class Parser:
         # create the output folder if necessary
         self.dist_folder.mkdir(parents=True, exist_ok=True)
 
-        # initialize chromedriver and start parsing
+        # initialize chromedriver
         self.driver = self.init_chromedriver()
-        self.run(url)
+
+        self.starting_url = url
 
     def get_page_config(self, token):
         # starts by grabbing the gobal site configuration table, if exists
@@ -702,10 +703,10 @@ class Parser:
         self.driver.get(url)
         WebDriverWait(self.driver, 60).until(notion_page_loaded())
 
-    def run(self, url):
+    def run(self):
         start_time = time.time()
         self.processed_pages = {}
-        self.parse_page(url)
+        self.parse_page(self.starting_url)
         elapsed_time = time.time() - start_time
         formatted_time = "{:02d}:{:02d}:{:02d}".format(
             int(elapsed_time // 3600),
