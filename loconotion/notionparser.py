@@ -1,37 +1,34 @@
-import os
-import sys
-import shutil
-import time
-import uuid
-import logging
-import re
 import glob
-import mimetypes
-import urllib.parse
 import hashlib
+import logging
+import mimetypes
+import os
+import re
+import shutil
+import sys
+import time
+import urllib.parse
+import uuid
 from pathlib import Path
 
 log = logging.getLogger(f"loconotion.{__name__}")
 
 try:
     import chromedriver_autoinstaller
-    from selenium import webdriver
-    from selenium.webdriver.chrome.options import Options
-    from selenium.common.exceptions import TimeoutException, NoSuchElementException
-    from selenium.webdriver.support import expected_conditions as EC
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.common.action_chains import ActionChains
-    from selenium.webdriver.support.ui import WebDriverWait
-    from bs4 import BeautifulSoup
-    import requests
     import cssutils
+    import requests
+    from bs4 import BeautifulSoup
+    from selenium import webdriver
+    from selenium.common.exceptions import TimeoutException
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.support.ui import WebDriverWait
 
     cssutils.log.setLevel(logging.CRITICAL)  # removes warning logs from cssutils
 except ModuleNotFoundError as error:
     log.critical(f"ModuleNotFoundError: {error}. have your installed the requirements?")
     sys.exit()
 
-from conditions import toggle_block_has_opened, notion_page_loaded
+from conditions import notion_page_loaded, toggle_block_has_opened
 
 
 class Parser:
