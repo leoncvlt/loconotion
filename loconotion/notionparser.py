@@ -299,50 +299,8 @@ class Parser:
                     break
                 last_height = new_height
 
-        # function to expand all the toggle block in the page to make their content visible
-        # so we can hook up our custom toggle logic afterwards
-        def open_toggle_blocks(timeout, exclude=[]):
-            opened_toggles = exclude
-            toggle_blocks = self.driver.find_elements_by_class_name("notion-toggle-block")
-            log.debug(f"Opening {len(toggle_blocks)} new toggle blocks in the page")
-            for toggle_block in toggle_blocks:
-                if not toggle_block in opened_toggles:
-                    toggle_button = toggle_block.find_element_by_css_selector(
-                        "div[role=button]"
-                    )
-                    # check if the toggle is already open by the direction of its arrow
-                    is_toggled = "(180deg)" in (
-                        toggle_button.find_element_by_tag_name("svg").get_attribute(
-                            "style"
-                        )
-                    )
-                    if not is_toggled:
-                        # click on it, then wait until all elements are displayed
-                        self.driver.execute_script("arguments[0].click();", toggle_button)
-                        try:
-                            WebDriverWait(self.driver, timeout).until(
-                                toggle_block_has_opened(toggle_block)
-                            )
-                        except TimeoutException as ex:
-                            log.warning(
-                                "Timeout waiting for toggle block to open."
-                                " Likely it's already open, but doesn't hurt to check."
-                            )
-                        except Exception as exception:
-                            log.error(f"Error trying to open a toggle block: {exception}")
-                        opened_toggles.append(toggle_block)
-
-            # after all toggles have been opened, check the page again to see if
-            # any toggle block had nested toggle blocks inside them
-            new_toggle_blocks = self.driver.find_elements_by_class_name(
-                "notion-toggle-block"
-            )
-            if len(new_toggle_blocks) > len(toggle_blocks):
-                # if so, run the function again
-                open_toggle_blocks(timeout, opened_toggles)
-
         # open the toggle blocks in the page
-        open_toggle_blocks(self.args["timeout"])
+        self.open_toggle_blocks(self.args["timeout"])
 
         # creates soup from the page to start parsing
         soup = BeautifulSoup(self.driver.page_source, "html.parser")
@@ -655,6 +613,52 @@ class Parser:
             for sub_page in sub_pages:
                 if not sub_page in self.processed_pages.keys():
                     self.parse_page(sub_page, index=index)
+
+    def open_toggle_blocks(self, timeout: int, exclude=[]):
+        """Expand all the toggle block in the page to make their content visible
+
+        Args:
+            timeout (int): timeout in seconds
+            exclude (list[Webelement], optional): toggles to exclude. Defaults to [].
+
+        Opening toggles is needed for hooking up our custom toggle logic afterwards.
+        """
+        opened_toggles = exclude
+        toggle_blocks = self.driver.find_elements_by_class_name("notion-toggle-block")
+        log.debug(f"Opening {len(toggle_blocks)} new toggle blocks in the page")
+        for toggle_block in toggle_blocks:
+            if toggle_block not in opened_toggles:
+                toggle_button = toggle_block.find_element_by_css_selector(
+                    "div[role=button]"
+                )
+                # check if the toggle is already open by the direction of its arrow
+                is_toggled = "(180deg)" in (
+                    toggle_button.find_element_by_tag_name("svg").get_attribute("style")
+                )
+                if not is_toggled:
+                    # click on it, then wait until all elements are displayed
+                    self.driver.execute_script("arguments[0].click();", toggle_button)
+                    try:
+                        WebDriverWait(self.driver, timeout).until(
+                            toggle_block_has_opened(toggle_block)
+                        )
+                    except TimeoutException as ex:
+                        log.warning(
+                            "Timeout waiting for toggle block to open."
+                            " Likely it's already open, but doesn't hurt to check."
+                        )
+                    except Exception as exception:
+                        log.error(f"Error trying to open a toggle block: {exception}")
+                    opened_toggles.append(toggle_block)
+
+        # after all toggles have been opened, check the page again to see if
+        # any toggle block had nested toggle blocks inside them
+        new_toggle_blocks = self.driver.find_elements_by_class_name(
+            "notion-toggle-block"
+        )
+        if len(new_toggle_blocks) > len(toggle_blocks):
+            # if so, run the function again
+            self.open_toggle_blocks(timeout, opened_toggles)
 
     def load(self, url):
         self.driver.get(url)
