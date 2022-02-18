@@ -6,7 +6,7 @@ import sys
 import urllib.parse
 from pathlib import Path
 
-from notionparser import Parser
+from .notionparser import Parser
 
 log = logging.getLogger("loconotion")
 

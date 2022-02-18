@@ -28,7 +28,7 @@ except ModuleNotFoundError as error:
     log.critical(f"ModuleNotFoundError: {error}. have your installed the requirements?")
     sys.exit()
 
-from conditions import notion_page_loaded, toggle_block_has_opened
+from .conditions import notion_page_loaded, toggle_block_has_opened
 
 
 class Parser:
@@ -243,12 +243,13 @@ class Parser:
             options=chrome_options,
         )
 
-    def parse_page(self, url: str, index: str = None):
+    def parse_page(self, url: str, index: str = None, parse_subpages=True):
         """Parse page at url and write it to file, then recursively parse all subpages.
 
         Args:
             url (str): URL of the page to parse.
             index (str, optional): URL of the index page. Defaults to None.
+            parse_subpages (bool): if subpages should be parsed. Used for testing.
 
         After the page at `url` has been parsed, calls itself recursively for every subpage
         it has discovered.
@@ -296,7 +297,9 @@ class Parser:
 
         subpages = self.find_subpages(url, index, soup, hrefDomain)
         self.export_parsed_page(url, index, soup)
-        self.parse_subpages(index, subpages)
+
+        if parse_subpages:
+            self.parse_subpages(index, subpages)
 
     def load_correct_theme(self, url):
         self.load(url)
