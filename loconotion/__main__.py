@@ -67,6 +67,9 @@ def main():
         help="Run chromedriver in non-headless mode",
     )
     argparser.add_argument(
+        "--patch", action="store_true", help="Patch table alignment"
+    )
+    argparser.add_argument(
         "-v", "--verbose", action="store_true", help="Increase output log verbosity"
     )
     args = argparser.parse_args()
