@@ -10,6 +10,7 @@ import mimetypes
 import urllib.parse
 import hashlib
 from pathlib import Path
+import table_patch
 
 log = logging.getLogger(f"loconotion.{__name__}")
 
@@ -649,7 +650,10 @@ class Parser:
                     self.parse_page(
                         sub_page, processed_pages=processed_pages, index=index
                     )
-
+        
+        if self.args["patch"]:
+            table_patch.patch(str(self.dist_folder))
+        
         # we're all done!
         return processed_pages
 
