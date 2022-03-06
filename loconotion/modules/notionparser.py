@@ -1,54 +1,53 @@
-import os
-import sys
-import shutil
-import time
-import uuid
-import logging
-import re
 import glob
-import mimetypes
-import urllib.parse
 import hashlib
+import logging
+import mimetypes
+import os
+import re
+import shutil
+import sys
+import time
+import urllib.parse
+import uuid
 from pathlib import Path
 
 log = logging.getLogger(f"loconotion.{__name__}")
 
 try:
     import chromedriver_autoinstaller
-    from selenium import webdriver
-    from selenium.webdriver.chrome.options import Options
-    from selenium.common.exceptions import TimeoutException, NoSuchElementException
-    from selenium.webdriver.support import expected_conditions as EC
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.common.action_chains import ActionChains
-    from selenium.webdriver.support.ui import WebDriverWait
-    from bs4 import BeautifulSoup
-    import requests
     import cssutils
+    import requests
+    from bs4 import BeautifulSoup
+    from selenium import webdriver
+    from selenium.common.exceptions import TimeoutException
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.support.ui import WebDriverWait
 
     cssutils.log.setLevel(logging.CRITICAL)  # removes warning logs from cssutils
 except ModuleNotFoundError as error:
     log.critical(f"ModuleNotFoundError: {error}. have your installed the requirements?")
     sys.exit()
 
-from conditions import toggle_block_has_opened, notion_page_loaded
+from .conditions import notion_page_loaded, toggle_block_has_opened
 
 
 class Parser:
     def __init__(self, config={}, args={}):
         self.config = config
         self.args = args
-        url = self.config.get("page", None)
-        if not url:
+        index_url = self.config.get("page", None)
+        if not index_url:
             log.critical(
                 "No initial page url specified. If passing a configuration file,"
-                " make sure it contains a 'page' key with the url of the notion.so"
+                " make sure it contains a 'page' key with the url of the notion.site"
                 " page to parse"
             )
             return
 
         # get the site name from the config, or make it up by cleaning the target page's slug
-        site_name = self.config.get("name", self.get_page_slug(url, extension=False))
+        site_name = self.config.get("name", self.get_page_slug(index_url, extension=False))
+
+        self.index_url = index_url
 
         # set the output folder based on the site name
         self.dist_folder = Path(config.get("output", Path("dist") / site_name))
@@ -80,9 +79,10 @@ class Parser:
         # create the output folder if necessary
         self.dist_folder.mkdir(parents=True, exist_ok=True)
 
-        # initialize chromedriver and start parsing
+        # initialize chromedriver
         self.driver = self.init_chromedriver()
-        self.run(url)
+
+        self.starting_url = index_url
 
     def get_page_config(self, token):
         # starts by grabbing the gobal site configuration table, if exists
@@ -183,8 +183,10 @@ class Parser:
                             content_type = response.headers.get("content-type")
                             if content_type:
                                 file_extension = mimetypes.guess_extension(content_type)
-                        elif '%3f' in file_extension.lower():
-                            file_extension = re.split("%3f", file_extension, flags=re.IGNORECASE)[0]
+                        elif "%3f" in file_extension.lower():
+                            file_extension = re.split(
+                                "%3f", file_extension, flags=re.IGNORECASE
+                            )[0]
                         destination = destination.with_suffix(file_extension)
 
                     Path(destination).parent.mkdir(parents=True, exist_ok=True)
@@ -230,8 +232,8 @@ class Parser:
         if not self.args.get("non_headless", False):
             chrome_options.add_argument("--headless")
             chrome_options.add_argument("window-size=1920,1080")
-            chrome_options.add_argument('--no-sandbox')
-            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--log-level=3")
         chrome_options.add_argument("--silent")
         chrome_options.add_argument("--disable-logging")
@@ -243,32 +245,76 @@ class Parser:
             options=chrome_options,
         )
 
-    def parse_page(self, url, processed_pages={}, index=None):
+    def parse_page(self, url: str):
+        """Parse page at url and write it to file, then recursively parse all subpages.
+
+        Args:
+            url (str): URL of the page to parse.
+
+        After the page at `url` has been parsed, calls itself recursively for every subpage
+        it has discovered.
+        """
         log.info(f"Parsing page '{url}'")
         log.debug(f"Using page config: {self.get_page_config(url)}")
 
         try:
-            self.load(url)
-            if not index:
-                # if this is the first page being parse, set it as the index.html
-                index = url
-                # if dark theme is enabled, set local storage item and re-load the page
-                if self.args.get("dark_theme", True):
-                    log.debug(f"Dark theme is enabled")
-                    self.driver.execute_script("window.localStorage.setItem('theme','{\"mode\":\"dark\"}');")
-                    self.load(url)
-        except TimeoutException as ex:
+            self.load_correct_theme(url)
+        except TimeoutException:
             log.critical(
                 "Timeout waiting for page content to load, or no content found."
                 " Are you sure the page is set to public?"
             )
             return
 
+        self.scroll_to_the_bottom()
+
+        # open the toggle blocks in the page
+        self.open_toggle_blocks(self.args["timeout"])
+
+        # creates soup from the page to start parsing
+        soup = BeautifulSoup(self.driver.page_source, "html.parser")
+
+        self.clean_up(soup)
+        self.set_custom_meta_tags(url, soup)
+        self.process_images_and_emojis(soup)
+        self.process_stylesheets(soup)
+        self.add_toggle_custom_logic(soup)
+        self.process_table_views(soup)
+        self.embed_custom_fonts(url, soup)
+
+        # inject any custom elements to the page
+        custom_injects = self.get_page_config(url).get("inject", {})
+        self.inject_custom_tags("head", soup, custom_injects)
+        self.inject_custom_tags("body", soup, custom_injects)
+
+        self.inject_loconotion_script_and_css(soup)
+
+        hrefDomain = f'{url.split("notion.site")[0]}notion.site'
+        log.info(f"Got the domain as {hrefDomain}")
+
+        subpages = self.find_subpages(url, soup, hrefDomain)
+        self.export_parsed_page(url, soup)
+        self.parse_subpages(subpages)
+
+    def load_correct_theme(self, url):
+        self.load(url)
+
+        # if dark theme is enabled, set local storage item and re-load the page
+        if self.args.get("dark_theme", True):
+            log.debug("Dark theme is enabled")
+            self.driver.execute_script(
+                "window.localStorage.setItem('theme','{\"mode\":\"dark\"}');"
+            )
+            self.load(url)
+
         # light theme is on by default
         # enable dark mode based on https://fruitionsite.com/ dark mode hack
-        if self.config.get('theme') == 'dark':
-            self.driver.execute_script("__console.environment.ThemeStore.setState({ mode: 'dark' });")
+        if self.config.get("theme") == "dark":
+            self.driver.execute_script(
+                "__console.environment.ThemeStore.setState({ mode: 'dark' });"
+            )
 
+    def scroll_to_the_bottom(self):
         # scroll at the bottom of the notion-scroller element to load all elements
         # continue once there are no changes in height after a timeout
         # don't do this if the page has a calendar databse on it or it will load forever
@@ -290,54 +336,53 @@ class Parser:
                     break
                 last_height = new_height
 
-        # function to expand all the toggle block in the page to make their content visible
-        # so we can hook up our custom toggle logic afterwards
-        def open_toggle_blocks(timeout, exclude=[]):
-            opened_toggles = exclude
-            toggle_blocks = self.driver.find_elements_by_class_name("notion-toggle-block")
-            log.debug(f"Opening {len(toggle_blocks)} new toggle blocks in the page")
-            for toggle_block in toggle_blocks:
-                if not toggle_block in opened_toggles:
-                    toggle_button = toggle_block.find_element_by_css_selector(
-                        "div[role=button]"
-                    )
-                    # check if the toggle is already open by the direction of its arrow
-                    is_toggled = "(180deg)" in (
-                        toggle_button.find_element_by_tag_name("svg").get_attribute(
-                            "style"
+    def open_toggle_blocks(self, timeout: int, exclude=[]):
+        """Expand all the toggle block in the page to make their content visible
+
+        Args:
+            timeout (int): timeout in seconds
+            exclude (list[Webelement], optional): toggles to exclude. Defaults to [].
+
+        Opening toggles is needed for hooking up our custom toggle logic afterwards.
+        """
+        opened_toggles = exclude
+        toggle_blocks = self.driver.find_elements_by_class_name("notion-toggle-block")
+        log.debug(f"Opening {len(toggle_blocks)} new toggle blocks in the page")
+        for toggle_block in toggle_blocks:
+            if toggle_block not in opened_toggles:
+                toggle_button = toggle_block.find_element_by_css_selector(
+                    "div[role=button]"
+                )
+                # check if the toggle is already open by the direction of its arrow
+                is_toggled = "(180deg)" in (
+                    toggle_button.find_element_by_tag_name("svg").get_attribute("style")
+                )
+                if not is_toggled:
+                    # click on it, then wait until all elements are displayed
+                    self.driver.execute_script("arguments[0].click();", toggle_button)
+                    try:
+                        WebDriverWait(self.driver, timeout).until(
+                            toggle_block_has_opened(toggle_block)
                         )
-                    )
-                    if not is_toggled:
-                        # click on it, then wait until all elements are displayed
-                        self.driver.execute_script("arguments[0].click();", toggle_button)
-                        try:
-                            WebDriverWait(self.driver, timeout).until(
-                                toggle_block_has_opened(toggle_block)
-                            )
-                        except TimeoutException as ex:
-                            log.warning(
-                                "Timeout waiting for toggle block to open."
-                                " Likely it's already open, but doesn't hurt to check."
-                            )
-                        except Exception as exception:
-                            log.error(f"Error trying to open a toggle block: {exception}")
-                        opened_toggles.append(toggle_block)
+                    except TimeoutException as ex:
+                        log.warning(
+                            "Timeout waiting for toggle block to open."
+                            " Likely it's already open, but doesn't hurt to check."
+                        )
+                    except Exception as exception:
+                        log.error(f"Error trying to open a toggle block: {exception}")
+                    opened_toggles.append(toggle_block)
 
-            # after all toggles have been opened, check the page again to see if
-            # any toggle block had nested toggle blocks inside them
-            new_toggle_blocks = self.driver.find_elements_by_class_name(
-                "notion-toggle-block"
-            )
-            if len(new_toggle_blocks) > len(toggle_blocks):
-                # if so, run the function again
-                open_toggle_blocks(timeout, opened_toggles)
+        # after all toggles have been opened, check the page again to see if
+        # any toggle block had nested toggle blocks inside them
+        new_toggle_blocks = self.driver.find_elements_by_class_name(
+            "notion-toggle-block"
+        )
+        if len(new_toggle_blocks) > len(toggle_blocks):
+            # if so, run the function again
+            self.open_toggle_blocks(timeout, opened_toggles)
 
-        # open the toggle blocks in the page
-        open_toggle_blocks(self.args["timeout"])
-
-        # creates soup from the page to start parsing
-        soup = BeautifulSoup(self.driver.page_source, "html.parser")
-
+    def clean_up(self, soup):
         # remove scripts and other tags we don't want / need
         for unwanted in soup.findAll("script"):
             unwanted.decompose()
@@ -351,7 +396,9 @@ class Parser:
             vendors_css.decompose()
 
         # collection selectors (List, Gallery, etc.) don't work, so remove them
-        for collection_selector in soup.findAll("div", {"class": "notion-collection-view-select"}):
+        for collection_selector in soup.findAll(
+            "div", {"class": "notion-collection-view-select"}
+        ):
             collection_selector.decompose()
 
         # clean up the default notion meta tags
@@ -380,6 +427,7 @@ class Parser:
             if unwanted_og_tag:
                 unwanted_og_tag.decompose()
 
+    def set_custom_meta_tags(self, url, soup):
         # set custom meta tags
         custom_meta_tags = self.get_page_config(url).get("meta", [])
         for custom_meta_tag in custom_meta_tags:
@@ -389,15 +437,16 @@ class Parser:
             log.debug(f"Adding meta tag {str(tag)}")
             soup.head.append(tag)
 
+    def process_images_and_emojis(self, soup):
         # process images & emojis
         cache_images = True
         for img in soup.findAll("img"):
             if img.has_attr("src"):
-                if cache_images and not "data:image" in img["src"]:
+                if cache_images and "data:image" not in img["src"]:
                     img_src = img["src"]
                     # if the path starts with /, it's one of notion's predefined images
                     if img["src"].startswith("/"):
-                        img_src = "https://www.notion.so" + img["src"]
+                        img_src = f'https://www.notion.so{img["src"]}'
                         # notion's own default images urls are in a weird format, need to sanitize them
                         # img_src = 'https://www.notion.so' + img['src'].split("notion.so")[-1].replace("notion.so", "").split("?")[0]
                         # if (not '.amazonaws' in img_src):
@@ -405,35 +454,40 @@ class Parser:
 
                     cached_image = self.cache_file(img_src)
                     img["src"] = cached_image
-                else:
-                    if img["src"].startswith("/"):
-                        img["src"] = "https://www.notion.so" + img["src"]
+                elif img["src"].startswith("/"):
+                    img["src"] = f'https://www.notion.so{img["src"]}'
 
             # on emoji images, cache their sprite sheet and re-set their background url
             if img.has_attr("class") and "notion-emoji" in img["class"]:
                 style = cssutils.parseStyle(img["style"])
                 spritesheet = style["background"]
                 spritesheet_url = spritesheet[
-                                  spritesheet.find("(") + 1: spritesheet.find(")")
-                                  ]
+                    spritesheet.find("(") + 1 : spritesheet.find(")")
+                ]
                 cached_spritesheet_url = self.cache_file(
-                    "https://www.notion.so" + spritesheet_url
+                    f"https://www.notion.so{spritesheet_url}"
                 )
+
                 style["background"] = spritesheet.replace(
                     spritesheet_url, str(cached_spritesheet_url)
                 )
                 img["style"] = style.cssText
 
+    def process_stylesheets(self, soup):
         # process stylesheets
         for link in soup.findAll("link", rel="stylesheet"):
             if link.has_attr("href") and link["href"].startswith("/"):
                 # we don't need the vendors stylesheet
                 if "vendors~" in link["href"]:
                     continue
-                cached_css_file = self.cache_file("https://www.notion.so" + link["href"])
+                cached_css_file = self.cache_file(
+                    f'https://www.notion.so{link["href"]}'
+                )
                 # files in the css file might be reference with a relative path,
                 # so store the path of the current css file
-                parent_css_path = os.path.split(urllib.parse.urlparse(link["href"]).path)[0]
+                parent_css_path = os.path.split(
+                    urllib.parse.urlparse(link["href"]).path
+                )[0]
                 # open the locally saved file
                 with open(self.dist_folder / cached_css_file, "rb+") as f:
                     stylesheet = cssutils.parseString(f.read())
@@ -446,17 +500,28 @@ class Parser:
                                 rule.style["src"].split("url(")[-1].split(")")[0]
                             )
                             # assemble the url given the current css path
-                            font_url = "/".join(p.strip("/") for p in ["https://www.notion.so", parent_css_path, font_file] if p.strip("/"))
+                            font_url = "/".join(
+                                p.strip("/")
+                                for p in [
+                                    "https://www.notion.so",
+                                    parent_css_path,
+                                    font_file,
+                                ]
+                                if p.strip("/")
+                            )
                             # don't hash the font files filenames, rather get filename only
-                            cached_font_file = self.cache_file(font_url, Path(font_file).name)
+                            cached_font_file = self.cache_file(
+                                font_url, Path(font_file).name
+                            )
                             rule.style["src"] = f"url({cached_font_file})"
                     # commit stylesheet edits to file
                     f.seek(0)
                     f.truncate()
                     f.write(stylesheet.cssText)
-                        
+
                 link["href"] = str(cached_css_file)
 
+    def add_toggle_custom_logic(self, soup):
         # add our custom logic to all toggle blocks
         for toggle_block in soup.findAll("div", {"class": "notion-toggle-block"}):
             toggle_id = uuid.uuid4()
@@ -476,21 +541,46 @@ class Parser:
                     "loconotion-toggle-id"
                 ] = toggle_id
 
+    def process_table_views(self, soup):
         # if there are any table views in the page, add links to the title rows
         # the link to the row item is equal to its data-block-id without dashes
         for table_view in soup.findAll("div", {"class": "notion-table-view"}):
             for table_row in table_view.findAll(
-                    "div", {"class": "notion-collection-item"}
+                "div", {"class": "notion-collection-item"}
             ):
                 table_row_block_id = table_row["data-block-id"]
                 table_row_href = "/" + table_row_block_id.replace("-", "")
                 row_target_span = table_row.find("span")
-                row_target_span["style"] = row_target_span["style"].replace("pointer-events: none;","")
+                row_target_span["style"] = row_target_span["style"].replace(
+                    "pointer-events: none;", ""
+                )
                 row_link_wrapper = soup.new_tag(
-                    "a", attrs={"href": table_row_href, "style": "cursor: pointer; color: inherit; text-decoration: none; fill: inherit;"}
+                    "a",
+                    attrs={
+                        "href": table_row_href,
+                        "style": "cursor: pointer; color: inherit; text-decoration: none; fill: inherit;",
+                    },
                 )
                 row_target_span.wrap(row_link_wrapper)
 
+    def embed_custom_fonts(self, url, soup):
+        if not (custom_fonts := self.get_page_config(url).get("fonts", {})):
+            return
+
+        # append a stylesheet importing the google font for each unique font
+        unique_custom_fonts = set(custom_fonts.values())
+        for font in unique_custom_fonts:
+            if font:
+                google_fonts_embed_name = font.replace(" ", "+")
+                font_href = f"https://fonts.googleapis.com/css2?family={google_fonts_embed_name}:wght@500;600;700&display=swap"
+                custom_font_stylesheet = soup.new_tag(
+                    "link", rel="stylesheet", href=font_href
+                )
+                soup.head.append(custom_font_stylesheet)
+
+        # go through each custom font, and add a css rule overriding the font-family
+        # to the font override stylesheet targetting the appropriate selector
+        font_override_stylesheet = soup.new_tag("style", type="text/css")
         # embed custom google font(s)
         fonts_selectors = {
             "site": "div:not(.notion-code-block)",
@@ -502,66 +592,53 @@ class Parser:
             "body": ".notion-scroller",
             "code": ".notion-code-block *",
         }
-        custom_fonts = self.get_page_config(url).get("fonts", {})
-        if custom_fonts:
-            # append a stylesheet importing the google font for each unique font
-            unique_custom_fonts = set(custom_fonts.values())
-            for font in unique_custom_fonts:
-                if font:
-                    google_fonts_embed_name = font.replace(" ", "+")
-                    font_href = f"https://fonts.googleapis.com/css2?family={google_fonts_embed_name}:wght@500;600;700&display=swap"
-                    custom_font_stylesheet = soup.new_tag(
-                        "link", rel="stylesheet", href=font_href
-                    )
-                    soup.head.append(custom_font_stylesheet)
-
-            # go through each custom font, and add a css rule overriding the font-family
-            # to the font override stylesheet targetting the appropriate selector
-            font_override_stylesheet = soup.new_tag("style", type="text/css")
-            for target, custom_font in custom_fonts.items():
-                if custom_font and not target == "site":
-                    log.debug(f"Setting {target} font-family to {custom_font}")
-                    font_override_stylesheet.append(
-                        fonts_selectors[target]
-                        + " {font-family:"
-                        + custom_font
-                        + " !important} "
-                    )
-            site_font = custom_fonts.get("site", None)
-            # process global site font last to more granular settings can override it
-            if site_font:
-                log.debug(f"Setting global site font-family to {site_font}"),
+        for target, custom_font in custom_fonts.items():
+            if custom_font and target != "site":
+                log.debug(f"Setting {target} font-family to {custom_font}")
                 font_override_stylesheet.append(
-                    fonts_selectors["site"] + " {font-family:" + site_font + "} "
+                    fonts_selectors[target]
+                    + " {font-family:"
+                    + custom_font
+                    + " !important} "
                 )
-            # finally append the font overrides stylesheets to the page
-            soup.head.append(font_override_stylesheet)
 
-        # inject any custom elements to the page
-        custom_injects = self.get_page_config(url).get("inject", {})
+        site_font = custom_fonts.get("site", None)
+        if site_font:
+            log.debug(f"Setting global site font-family to {site_font}"),
+            font_override_stylesheet.append(
+                fonts_selectors["site"] + " {font-family:" + site_font + "} "
+            )
 
-        def injects_custom_tags(section):
-            section_custom_injects = custom_injects.get(section, {})
-            for tag, elements in section_custom_injects.items():
-                for element in elements:
-                    injected_tag = soup.new_tag(tag)
-                    for attr, value in element.items():
-                        injected_tag[attr] = value
-                        # if the value refers to a file, copy it to the dist folder
-                        if attr.lower() == "href" or attr.lower() == "src":
-                            log.debug(f"Copying injected file '{value}'")
-                            cached_custom_file = self.cache_file(
-                                (Path.cwd() / value.strip("/"))
-                            )
-                            # destination = (self.dist_folder / source.name)
-                            # shutil.copyfile(source, destination)
-                            injected_tag[attr] = str(cached_custom_file)  # source.name
-                    log.debug(f"Injecting <{section}> tag: {str(injected_tag)}")
-                    soup.find(section).append(injected_tag)
+        # finally append the font overrides stylesheets to the page
+        soup.head.append(font_override_stylesheet)
 
-        injects_custom_tags("head")
-        injects_custom_tags("body")
+    def inject_custom_tags(self, section: str, soup, custom_injects: dict):
+        """Inject custom tags to the given section.
 
+        Args:
+            section (str): Section / tag name to insert into.
+            soup (BeautifulSoup): a BeautifulSoup element holding the whole page.
+            custom_injects (dict): description of custom tags to inject.
+        """
+        section_custom_injects = custom_injects.get(section, {})
+        for tag, elements in section_custom_injects.items():
+            for element in elements:
+                injected_tag = soup.new_tag(tag)
+                for attr, value in element.items():
+                    injected_tag[attr] = value
+                    # if the value refers to a file, copy it to the dist folder
+                    if attr.lower() in ["href", "src"]:
+                        log.debug(f"Copying injected file '{value}'")
+                        cached_custom_file = self.cache_file(
+                            (Path.cwd() / value.strip("/"))
+                        )
+                        # destination = (self.dist_folder / source.name)
+                        # shutil.copyfile(source, destination)
+                        injected_tag[attr] = str(cached_custom_file)  # source.name
+                log.debug(f"Injecting <{section}> tag: {injected_tag}")
+                soup.find(section).append(injected_tag)
+
+    def inject_loconotion_script_and_css(self, soup):
         # inject loconotion's custom stylesheet and script
         loconotion_custom_css = self.cache_file(Path("bundles/loconotion.css"))
         custom_css = soup.new_tag(
@@ -574,29 +651,31 @@ class Parser:
         )
         soup.body.insert(-1, custom_script)
 
-        hrefDomain = url.split('notion.site')[0] + 'notion.site'
-        log.info(f"Got the domain as {hrefDomain}")
-
+    def find_subpages(self, url, soup, hrefDomain):
         # find sub-pages and clean slugs / links
-        sub_pages = []
+        subpages = []
         parse_links = not self.get_page_config(url).get("no-links", False)
-        for a in soup.find_all('a', href=True):
+        for a in soup.find_all("a", href=True):
             sub_page_href = a["href"]
             if sub_page_href.startswith("/"):
-                sub_page_href = hrefDomain + '/'+ a["href"].split('/')[len(a["href"].split('/'))-1]
+                sub_page_href = (
+                    f'{hrefDomain}/{a["href"].split("/")[len(a["href"].split("/"))-1]}'
+                )
                 log.info(f"Got this as href {sub_page_href}")
             if sub_page_href.startswith(hrefDomain):
-                if parse_links or not len(a.find_parents("div", class_="notion-scroller")):
+                if parse_links or not len(
+                    a.find_parents("div", class_="notion-scroller")
+                ):
                     # if the link is an anchor link,
                     # check if the page hasn't already been parsed
                     if "#" in sub_page_href:
                         sub_page_href_tokens = sub_page_href.split("#")
                         sub_page_href = sub_page_href_tokens[0]
-                        a["href"] = "#" + sub_page_href_tokens[-1]
+                        a["href"] = f"#{sub_page_href_tokens[-1]}"
                         a["class"] = a.get("class", []) + ["loconotion-anchor-link"]
                         if (
-                                sub_page_href in processed_pages.keys()
-                                or sub_page_href in sub_pages
+                            sub_page_href in self.processed_pages.keys()
+                            or sub_page_href in subpages
                         ):
                             log.debug(
                                 f"Original page for anchor link {sub_page_href}"
@@ -606,10 +685,10 @@ class Parser:
                     else:
                         a["href"] = (
                             self.get_page_slug(sub_page_href)
-                            if sub_page_href != index
+                            if sub_page_href != self.index_url
                             else "index.html"
                         )
-                    sub_pages.append(sub_page_href)
+                    subpages.append(sub_page_href)
                     log.debug(f"Found link to page {a['href']}")
                 else:
                     # if the page is set not to follow any links, strip the href
@@ -619,17 +698,18 @@ class Parser:
                     del a["href"]
                     a.name = "span"
                     # remove pointer cursor styling on the link and all children
-                    for child in ([a] + a.find_all()):
-                        if (child.has_attr("style")):
-                            style = cssutils.parseStyle(child['style'])
-                            style['cursor'] = "default"
-                            child['style'] = style.cssText
+                    for child in [a] + a.find_all():
+                        if child.has_attr("style"):
+                            style = cssutils.parseStyle(child["style"])
+                            style["cursor"] = "default"
+                            child["style"] = style.cssText
+        return subpages
 
-            
+    def export_parsed_page(self, url, soup):
         # exports the parsed page
         html_str = str(soup)
-        html_file = self.get_page_slug(url) if url != index else "index.html"
-        if html_file in processed_pages.values():
+        html_file = self.get_page_slug(url) if url != self.index_url else "index.html"
+        if html_file in self.processed_pages.values():
             log.error(
                 f"Found duplicate pages with slug '{html_file}' - previous one will be"
                 " overwritten. Make sure that your notion pages names or custom slugs"
@@ -638,35 +718,31 @@ class Parser:
         log.info(f"Exporting page '{url}' as '{html_file}'")
         with open(self.dist_folder / html_file, "wb") as f:
             f.write(html_str.encode("utf-8").strip())
-        processed_pages[url] = html_file
+        self.processed_pages[url] = html_file
 
+    def parse_subpages(self, subpages):
         # parse sub-pages
-        if sub_pages and not self.args.get("single_page", False):
-            if processed_pages:
-                log.debug(f"Pages processed so far: {len(processed_pages)}")
-            for sub_page in sub_pages:
-                if not sub_page in processed_pages.keys():
-                    self.parse_page(
-                        sub_page, processed_pages=processed_pages, index=index
-                    )
-
-        # we're all done!
-        return processed_pages
+        if subpages and not self.args.get("single_page", False):
+            if self.processed_pages:
+                log.debug(f"Pages processed so far: {len(self.processed_pages)}")
+            for sub_page in subpages:
+                if sub_page not in self.processed_pages.keys():
+                    self.parse_page(sub_page)
 
     def load(self, url):
         self.driver.get(url)
         WebDriverWait(self.driver, 60).until(notion_page_loaded())
 
-    def run(self, url):
+    def run(self):
         start_time = time.time()
-        tot_processed_pages = self.parse_page(url)
+        self.processed_pages = {}
+        self.parse_page(self.starting_url)
         elapsed_time = time.time() - start_time
         formatted_time = "{:02d}:{:02d}:{:02d}".format(
             int(elapsed_time // 3600),
             int(elapsed_time % 3600 // 60),
             int(elapsed_time % 60),
-            tot_processed_pages,
         )
         log.info(
-            f"Finished!\n\nProcessed {len(tot_processed_pages)} pages in {formatted_time}"
+            f"Finished!\n\nProcessed {len(self.processed_pages)} pages in {formatted_time}"
         )
