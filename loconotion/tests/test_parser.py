@@ -1,4 +1,3 @@
-import pytest
 from modules.notionparser import Parser
 
 def test_parse_sample_page():
