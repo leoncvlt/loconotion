@@ -6,6 +6,9 @@ log = logging.getLogger(f"loconotion.{__name__}")
 class notion_page_loaded(object):
     """An expectation for checking that a notion page has loaded."""
 
+    def __init__(self):
+        self.previous_page_source = ""
+
     def __call__(self, driver):
         notion_presence = len(
             driver.find_elements_by_class_name("notion-presence-container")
@@ -19,19 +22,21 @@ class notion_page_loaded(object):
                 children = len(scroller.find_elements_by_tag_name("div"))
                 if children > 0:
                     scrollers_with_children.append(scroller)
+            source_changed = self.previous_page_source != driver.page_source
+
             log.debug(
                 f"Waiting for page content to load"
                 f" (pending blocks: {unknown_blocks},"
                 f" loading spinners: {loading_spinners},"
-                f" loaded scrollers: {len(scrollers_with_children)} / {len(scrollers)})"
+                f" loaded scrollers: {len(scrollers_with_children)} / {len(scrollers)},"
+                f" source changed: {source_changed})"
             )
             all_scrollers_loaded = len(scrollers) == len(scrollers_with_children)
-            if (all_scrollers_loaded and not unknown_blocks and not loading_spinners):
+            if (all_scrollers_loaded and not unknown_blocks and not loading_spinners and not source_changed):
                 return True
-            else:
-                return False
-        else:
-            return False
+
+        self.previous_page_source = driver.page_source
+        return False
 
 
 class toggle_block_has_opened(object):
