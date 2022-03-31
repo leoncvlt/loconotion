@@ -683,10 +683,11 @@ class Parser:
                             )
                             continue
                     else:
+                        extension_in_links = self.config.get("extension_in_links", True)
                         a["href"] = (
-                            self.get_page_slug(sub_page_href)
+                            self.get_page_slug(sub_page_href, extension=extension_in_links)
                             if sub_page_href != self.index_url
-                            else "index.html"
+                            else ("index.html" if extension_in_links else "")
                         )
                     subpages.append(sub_page_href)
                     log.debug(f"Found link to page {a['href']}")
