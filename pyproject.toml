@@ -13,6 +13,7 @@ cssutils = "^1.0.2"
 requests = "^2.23.0"
 selenium = "^3.141.0"
 toml = "^0.10.1"
+html5lib = "^1.1"
 
 [tool.poetry.dev-dependencies]
 black = "^19.10b0"

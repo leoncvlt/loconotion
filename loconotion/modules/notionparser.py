@@ -271,7 +271,7 @@ class Parser:
         self.open_toggle_blocks(self.args["timeout"])
 
         # creates soup from the page to start parsing
-        soup = BeautifulSoup(self.driver.page_source, "html.parser")
+        soup = BeautifulSoup(self.driver.page_source, "html5lib")
 
         self.clean_up(soup)
         self.set_custom_meta_tags(url, soup)
