@@ -3,6 +3,12 @@ import sys
 
 import modules.main as main
 
+def _exit():
+    try:
+        sys.exit(1)
+    except SystemExit:
+        os._exit(1)
+
 if __name__ == "__main__":
     try:
         args = main.get_args()
@@ -11,7 +17,10 @@ if __name__ == "__main__":
         parser.run()
     except KeyboardInterrupt:
         log.critical("Interrupted by user")
-        try:
-            sys.exit(0)
-        except SystemExit:
-            os._exit(0)
+        _exit()
+    except Exception as ex:
+        if args.verbose:
+            log.exception(ex)
+        else:
+            log.critical(f"{ex.__class__.__name__}: {str(ex)}")
+        _exit()

@@ -16,7 +16,7 @@ try:
 
 except ModuleNotFoundError as error:
     log.critical(f"ModuleNotFoundError: {error}. Have you installed the requirements?")
-    sys.exit()
+    sys.exit(1)
 
 
 def get_args():
@@ -121,32 +121,30 @@ def setup_logging(args):
 
 def init_parser(args, log):
     # initialise the website parser
-    try:
-        if urllib.parse.urlparse(args.target).scheme:
-            try:
-                requests.get(args.target)
-            except requests.ConnectionError as exception:
-                log.critical("Connection error")
+    if urllib.parse.urlparse(args.target).scheme:
+        try:
+            requests.get(args.target)
+        except requests.ConnectionError as exception:
+            log.critical("Connection error")
+            raise exception
 
-            if "notion.so" in args.target or "notion.site" in args.target:
-                log.info("Initialising parser with simple page url")
-                config = {"page": args.target}
-                parser = Parser(config=config, args=vars(args))
-            else:
-                log.critical(f"{args.target} is not a notion.so page")
-
-        elif Path(args.target).is_file():
-            with open(args.target, encoding="utf-8") as f:
-                parsed_config = toml.loads(f.read())
-                log.info("Initialising parser with configuration file")
-                log.debug(parsed_config)
-                parser = Parser(config=parsed_config, args=vars(args))
-
+        if "notion.so" in args.target or "notion.site" in args.target:
+            log.info("Initialising parser with simple page url")
+            config = {"page": args.target}
+            parser = Parser(config=config, args=vars(args))
         else:
-            log.critical(f"Config file {args.target} does not exist")
+            log.critical(f"{args.target} is not a notion.so page")
+            raise Exception()
 
-    except FileNotFoundError as e:
-        log.critical(f"FileNotFoundError: {e}")
-        sys.exit(0)
+    elif Path(args.target).is_file():
+        with open(args.target, encoding="utf-8") as f:
+            parsed_config = toml.loads(f.read())
+            log.info("Initialising parser with configuration file")
+            log.debug(parsed_config)
+            parser = Parser(config=parsed_config, args=vars(args))
+
+    else:
+        log.critical(f"Config file {args.target} does not exist")
+        raise FileNotFoundError(args.target)
 
     return parser

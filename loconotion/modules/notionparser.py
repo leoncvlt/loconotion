@@ -26,7 +26,7 @@ try:
     cssutils.log.setLevel(logging.CRITICAL)  # removes warning logs from cssutils
 except ModuleNotFoundError as error:
     log.critical(f"ModuleNotFoundError: {error}. have your installed the requirements?")
-    sys.exit()
+    sys.exit(1)
 
 from .conditions import notion_page_loaded, toggle_block_has_opened
 
@@ -42,7 +42,7 @@ class Parser:
                 " make sure it contains a 'page' key with the url of the notion.site"
                 " page to parse"
             )
-            return
+            raise Exception()
 
         # get the site name from the config, or make it up by cleaning the target page's slug
         site_name = self.config.get("name", self.get_page_slug(index_url, extension=False))
@@ -222,7 +222,7 @@ class Parser:
                     " https://chromedriver.chromium.org/downloads and use the"
                     " --chromedriver argument to point to the chromedriver executable"
                 )
-                sys.exit()
+                raise exception
 
         log.info(f"Initialising chromedriver at {chromedriver_path}")
         logs_path = Path.cwd() / ".logs" / "webdrive.log"
@@ -259,12 +259,12 @@ class Parser:
 
         try:
             self.load_correct_theme(url)
-        except TimeoutException:
+        except TimeoutException as ex:
             log.critical(
                 "Timeout waiting for page content to load, or no content found."
                 " Are you sure the page is set to public?"
             )
-            return
+            raise ex
 
         self.scroll_to_the_bottom()
 
