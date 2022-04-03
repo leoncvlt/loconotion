@@ -625,6 +625,12 @@ class Parser:
             for element in elements:
                 injected_tag = soup.new_tag(tag)
                 for attr, value in element.items():
+
+                    # `inner_html` refers to the tag's inner content
+                    # and will be added later
+                    if attr == "inner_html":
+                        continue
+
                     injected_tag[attr] = value
                     # if the value refers to a file, copy it to the dist folder
                     if attr.lower() in ["href", "src"]:
@@ -636,6 +642,11 @@ class Parser:
                         # shutil.copyfile(source, destination)
                         injected_tag[attr] = str(cached_custom_file)  # source.name
                 log.debug(f"Injecting <{section}> tag: {injected_tag}")
+
+                # adding `inner_html` as the tag's content
+                if "inner_html" in element:
+                    injected_tag.string = element["inner_html"]
+
                 soup.find(section).append(injected_tag)
 
     def inject_loconotion_script_and_css(self, soup):

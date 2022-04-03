@@ -120,10 +120,10 @@ theme = "dark"
 
   ## Custom Fonts ##
   # you can specify the name of a google font to use on the site - use the font embed name
-  # if in doubt select a style on fonts.google.com and navigate to the "embed" tag to 
+  # if in doubt select a style on fonts.google.com and navigate to the "embed" tag to
   # check the name under CSS rules
   # the following table keys controls the font of specific elements:
-  #   site: changes the font for the whole page (apart from code blocks) 
+  #   site: changes the font for the whole page (apart from code blocks)
   #         but the settings below override it
   #   navbar: site breadcrumbs on the top-left of the page
   #   title: page title (under the icon)
@@ -143,31 +143,38 @@ theme = "dark"
   code = ''
 
   ## Custom Element Injection ##
-  # defined as an array of tables [[site.inject]], followed by 'head' or 'body' to set 
+  # defined as an array of tables [[site.inject]], followed by 'head' or 'body' to set
   # the injection point, followed by name of the tag to inject
   # each key in the table maps to an atttribute in the tag
   # e.g. the following injects this tag in the <head>:
-  #   <link href="favicon-16x16.png" rel="icon" sizes="16x16" type="image/png"/> 
+  #   <link href="favicon-16x16.png" rel="icon" sizes="16x16" type="image/png"/>
   [[site.inject.head.link]]
-  rel="icon" 
+  rel="icon"
   sizes="16x16"
   type="image/png"
   href="/example/favicon-16x16.png"
-  
+
   # the following injects this tag in the in the <body>:
   #   <script src="custom-script.js" type="text/javascript"></script>
-  # note that all href / src files are copied to the root of the site folder 
+  # note that all href / src files are copied to the root of the site folder
   # regardless of their original path
   [[site.inject.body.script]]
   type="text/javascript"
   src="/example/custom-script.js"
 
+  # the following injects this script in the <head>:
+  #   <script>console.log("Hello, world!")</script>
+  [[site.inject.body.script]]
+  inner_html="""
+  console.log("Hello, world!")
+  """
+
 ## Individual Page Settings ##
-# the [pages] table defines override settings for individual pages, by defining 
+# the [pages] table defines override settings for individual pages, by defining
 # a sub-table named after the page url (or part of the url, but careful about
 # not using a string that appears in multiple page urls)
 [pages]
-  # the following settings will only apply to this page: 
+  # the following settings will only apply to this page:
   #   https://www.notion.so/d2fa06f244e64f66880bb0491f58223d
   [pages.d2fa06f244e64f66880bb0491f58223d]
     ## custom slugs ##
@@ -176,13 +183,13 @@ theme = "dark"
     slug = "games-list"
 
     # change the description meta tag for this page only
-    [[pages.d2fa06f244e64f66880bb0491f58223d.meta]] 
+    [[pages.d2fa06f244e64f66880bb0491f58223d.meta]]
     name = "description"
     content = "A fullscreen list database page, now with a pretty slug"
 
     # change the title font for this page only
     [pages.d2fa06f244e64f66880bb0491f58223d.fonts]
-    title = 'DM Mono' 
+    title = 'DM Mono'
 
   # set up pretty slugs and options for the other database pages
   [pages.54dab6011e604430a21dc477cb8e4e3a]
