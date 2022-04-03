@@ -187,7 +187,8 @@ class Parser:
                             file_extension = re.split(
                                 "%3f", file_extension, flags=re.IGNORECASE
                             )[0]
-                        destination = destination.with_suffix(file_extension)
+                        if file_extension:
+                            destination = destination.with_suffix(file_extension)
 
                     Path(destination).parent.mkdir(parents=True, exist_ok=True)
                     with open(destination, "wb") as f:
@@ -635,11 +636,11 @@ class Parser:
                     # if the value refers to a file, copy it to the dist folder
                     if attr.lower() in ["href", "src"]:
                         log.debug(f"Copying injected file '{value}'")
-                        cached_custom_file = self.cache_file(
-                            (Path.cwd() / value.strip("/"))
-                        )
-                        # destination = (self.dist_folder / source.name)
-                        # shutil.copyfile(source, destination)
+                        if urllib.parse.urlparse(value).scheme:
+                            path_to_file = value
+                        else:
+                            path_to_file = Path.cwd() / value.strip("/")
+                        cached_custom_file = self.cache_file(path_to_file)
                         injected_tag[attr] = str(cached_custom_file)  # source.name
                 log.debug(f"Injecting <{section}> tag: {injected_tag}")
 
