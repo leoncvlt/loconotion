@@ -232,7 +232,7 @@ class Parser:
         chrome_options = Options()
         if not self.args.get("non_headless", False):
             chrome_options.add_argument("--headless")
-            chrome_options.add_argument("window-size=1920,1080")
+            chrome_options.add_argument("window-size=1920,20000")
             chrome_options.add_argument("--no-sandbox")
             chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--log-level=3")
@@ -266,8 +266,6 @@ class Parser:
                 " Are you sure the page is set to public?"
             )
             raise ex
-
-        self.scroll_to_the_bottom()
 
         # open the toggle blocks in the page
         self.open_toggle_blocks(self.args["timeout"])
@@ -314,28 +312,6 @@ class Parser:
             self.driver.execute_script(
                 "__console.environment.ThemeStore.setState({ mode: 'dark' });"
             )
-
-    def scroll_to_the_bottom(self):
-        # scroll at the bottom of the notion-scroller element to load all elements
-        # continue once there are no changes in height after a timeout
-        # don't do this if the page has a calendar databse on it or it will load forever
-        calendar = self.driver.find_elements_by_class_name("notion-calendar-view")
-        if not calendar:
-            scroller = self.driver.find_element_by_css_selector(
-                ".notion-frame > .notion-scroller"
-            )
-            last_height = scroller.get_attribute("scrollHeight")
-            log.debug(f"Scrolling to bottom of notion-scroller (height: {last_height})")
-            while True:
-                self.driver.execute_script(
-                    "arguments[0].scrollTo(0, arguments[0].scrollHeight)", scroller
-                )
-                time.sleep(self.args["timeout"])
-                new_height = scroller.get_attribute("scrollHeight")
-                log.debug(f"New notion-scroller height after timeout is: {new_height}")
-                if new_height == last_height:
-                    break
-                last_height = new_height
 
     def open_toggle_blocks(self, timeout: int, exclude=[]):
         """Expand all the toggle block in the page to make their content visible
