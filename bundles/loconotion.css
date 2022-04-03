@@ -30,6 +30,7 @@ div[role="button"]:not(.notion-record-icon):hover {
 
 /* Resizes inlines databases */
 .notion-scroller .notion-collection_view-block > div,
+.notion-scroller .notion-collection_view-block > div > div > div,
 .notion-scroller .notion-collection_view-block .notion-list-view,
 .notion-scroller .notion-collection_view-block .notion-gallery-view,
 .notion-scroller .notion-collection_view-block .notion-table-view,
