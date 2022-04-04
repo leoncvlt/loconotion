@@ -103,6 +103,11 @@ page = "https://www.notion.so/Loconotion-Example-Page-03c403f4fdc94cc1b315b9469a
 # optionally apply notion's dark mode, remove the line below to use the default light mode
 theme = "dark"
 
+# whether or not to add file extenions to generated Notion page links.
+# Set this to 'false' if your web host supports serving pages without
+# extensions (e.g. GitHub Pages)
+extension_in_links = true
+
 ## Global Site Settings ##
 # this [site] table defines override settings for the whole site
 # later on we will see how to define settings for a single page
@@ -240,10 +245,12 @@ On top of this, the script can take these optional arguments:
 
 ## Sites built with Loconotion
 
-- [leonclvt.com](https://leoncvlt.com)
 - [aahnik.dev](https://aahnik.dev)
 - [44px.ru](https://44px.ru)
 - [hotelpal.xyz](https://hotelpal.xyz)
+- [nemunasring.lt](https://nemunasring.lt)
+- [blog.2m.lt](https://blog.2m.lt)
+- [2m.lt](https://2m.lt)
 
 If you used Loconotion to build a cool site and want it added to the list above, shoot me a mail or submit a pull request!
 
