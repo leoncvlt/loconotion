@@ -1,7 +1,7 @@
 import os
 
 
-def patch(base_folder):
+def patch_it(base_folder):
     """
     patch table alignment
     """
