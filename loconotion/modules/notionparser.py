@@ -695,6 +695,15 @@ class Parser:
         return subpages
 
     def export_parsed_page(self, url, soup):
+        # pretty url setting
+        # replace /*.html to /
+        for link in soup.findAll("a", rel="noopener noreferrer"):
+            if link.has_attr("href"):
+                tmp_href = f"/{link['href']}"
+                tmp_href = tmp_href.replace('.html', '')
+                # log.info(f"href: {tmp_href}")
+                link["href"] = tmp_href
+
         # exports the parsed page
         html_str = str(soup)
         html_file = self.get_page_slug(url) if url != self.index_url else "index.html"
