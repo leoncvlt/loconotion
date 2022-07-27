@@ -5,7 +5,7 @@ description = "Turn Notion pages into lightweight, customizable static websites"
 authors = ["Leonardo Cavaletti <impeto.blu@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 beautifulsoup4 = "^4.9.1"
 chromedriver-autoinstaller = "^0.2.0"
 colorama = "^0.4.3"
