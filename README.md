@@ -244,6 +244,7 @@ On top of this, the script can take these optional arguments:
 - [aahnik.dev](https://aahnik.dev)
 - [44px.ru](https://44px.ru)
 - [hotelpal.xyz](https://hotelpal.xyz)
+- [vincent-maladiere.github.io](https://vincent-maladiere.github.io/)
 
 If you used Loconotion to build a cool site and want it added to the list above, shoot me a mail or submit a pull request!
 
