@@ -324,6 +324,7 @@ class Parser:
         """
         opened_toggles = exclude
         toggle_blocks = self.driver.find_elements_by_class_name("notion-toggle-block")
+        toggle_blocks += self._get_title_toggle_blocks()
         log.debug(f"Opening {len(toggle_blocks)} new toggle blocks in the page")
         for toggle_block in toggle_blocks:
             if toggle_block not in opened_toggles:
@@ -355,10 +356,26 @@ class Parser:
         new_toggle_blocks = self.driver.find_elements_by_class_name(
             "notion-toggle-block"
         )
+        new_toggle_blocks += self._get_title_toggle_blocks()
         if len(new_toggle_blocks) > len(toggle_blocks):
             # if so, run the function again
             self.open_toggle_blocks(timeout, opened_toggles)
-
+        
+    def _get_title_toggle_blocks(self):
+        """Find toggle title blocks via their button element.
+        """
+        title_toggle_blocks = []
+        header_types = ["header", "sub_header", "sub_sub_header"]
+        for header_type in header_types:
+            title_blocks = self.driver.find_elements_by_class_name(
+                f"notion-selectable.notion-{header_type}-block"
+            )
+            for block in title_blocks:
+                toggle_buttons = block.find_elements_by_css_selector("div[role=button]")
+                if len(toggle_buttons) > 0:
+                    title_toggle_blocks.append(block)
+        return title_toggle_blocks
+    
     def clean_up(self, soup):
         # remove scripts and other tags we don't want / need
         for unwanted in soup.findAll("script"):
@@ -500,7 +517,9 @@ class Parser:
 
     def add_toggle_custom_logic(self, soup):
         # add our custom logic to all toggle blocks
-        for toggle_block in soup.findAll("div", {"class": "notion-toggle-block"}):
+        toggle_blocks = soup.findAll("div", {"class": "notion-toggle-block"})
+        toggle_blocks += self._get_title_toggle_blocks_soup(soup)
+        for toggle_block in toggle_blocks:
             toggle_id = uuid.uuid4()
             toggle_button = toggle_block.select_one("div[role=button]")
             toggle_content = toggle_block.find("div", {"class": None, "style": ""})
@@ -517,6 +536,21 @@ class Parser:
                 toggle_content.attrs["loconotion-toggle-id"] = toggle_button.attrs[
                     "loconotion-toggle-id"
                 ] = toggle_id
+
+    def _get_title_toggle_blocks_soup(self, soup):
+        """Find title toggle blocks from soup.
+        """
+        title_toggle_blocks = []
+        title_types = ["header", "sub_header", "sub_sub_header"]
+        for title_type in title_types:
+            title_blocks = soup.findAll(
+                "div",
+                {"class": f"notion-selectable notion-{title_type}-block"}
+            )
+            for block in title_blocks:
+                if block.select_one("div[role=button]") is not None:
+                    title_toggle_blocks.append(block)
+        return title_toggle_blocks 
 
     def process_table_views(self, soup):
         # if there are any table views in the page, add links to the title rows
