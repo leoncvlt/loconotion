@@ -4,7 +4,12 @@
 
 # name of the folder that the site will be generated in
 name = "Notion Test Site"
+
+# Sitemap configuration
+# Remove if you don't want to generate sitemap.xml
+protocol = "https"
 domain = "example.com"
+remove_html_extension = true
 
 # the notion.so page to being parsing from. This page will become the index.html
 # of the generated site, and loconotation will parse all sub-pages present on the page
