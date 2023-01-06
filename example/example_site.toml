@@ -4,6 +4,7 @@
 
 # name of the folder that the site will be generated in
 name = "Notion Test Site"
+domain = "example.com"
 
 # the notion.so page to being parsing from. This page will become the index.html
 # of the generated site, and loconotation will parse all sub-pages present on the page
