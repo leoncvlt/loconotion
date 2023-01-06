@@ -754,7 +754,7 @@ class Parser:
                 if sub_page not in self.processed_pages.keys():
                     self.parse_page(sub_page)
 
-    def export_sitemap(self, domain:str, processed_pages:list):
+    def export_sitemap(self, protocol:str, domain:str, processed_pages:set, remove_html_extension:bool):
         # Open file in dist/sitemap.xml to write sitemap
         with open(self.dist_folder / "sitemap.xml", "w") as f:
             # Write XML header
@@ -763,7 +763,9 @@ class Parser:
             f.write('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\r')
             # Write the sitemap from domain and processed pages
             for page in processed_pages:
-                f.write(f'<url><loc>https://{domain}/{page}</loc></url>\r')
+                if remove_html_extension:
+                    page = page.replace(".html", "")
+                f.write(f'\t<url><loc>{protocol}://{domain}/{page}</loc></url>\r')
             # Write sitemap index closing tag
             f.write("</urlset>")
 
@@ -776,7 +778,11 @@ class Parser:
         self.processed_pages = {}
         self.parse_page(self.starting_url)
         if self.config.get("domain",None):
-            self.export_sitemap(self.config.get("domain"),list(self.processed_pages.values()))
+            self.export_sitemap(
+                self.config.get("protocol", "https"),
+                self.config.get("domain"),
+                set(self.processed_pages.values()),
+                self.config.get("remove_html_extension", False))
         elapsed_time = time.time() - start_time
         formatted_time = "{:02d}:{:02d}:{:02d}".format(
             int(elapsed_time // 3600),
