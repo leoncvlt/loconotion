@@ -1,24 +1,24 @@
 # Loconotion
 
-**Loconotion** is a Python script that parses a [Notion.so](https://notion.so) public page (alongside with all of its subpages) and generates a lightweight, customizable static site out of it.
+**Loconotion** is a Python script that parses a [Notion.so](https://notion.so) public page (alongside all of its subpages) and generates a lightweight, customizable static site.
 
 ## But Why?
 
-[Notion](https://notion.so) is a web app where you can create your own workspace / perosnal wiki out of content blocks. It feels good to use, and the results look very pretty - the developers did a great job. Given that it also offers the possibility of making a page (and its sub-pagse) public on the web, several people choose to use Notion to manage their personal blog, portfolio, or some kind of simple website. Sadly Notion does not support custom domains: your public pages are stuck in the `notion.so` domain, under long computer-generated URLs.
+[Notion](https://notion.so) is a web app where you can create your workspace / personal wiki out of content blocks. It feels good to use, and the results look very pretty - the developers did a great job. Given that it also offers the possibility of making a page (and its sub-pages) public on the web, several people choose to use Notion to manage their personal blog, portfolio, or some simple website. Sadly Notion does not support custom domains: your public pages are stuck in the `notion.so` domain, under long computer-generated URLs.
 
 Some services like Super, HostingPotion, HostNotion and Fruition try to work around this issue by relying on a [clever hack](https://gist.github.com/mayneyao/b9fefc9625b76f70488e5d8c2a99315d) using CloudFlare workers. This solution, however, has some disadvantages:
 
-- **Not free** - Super, HostingPotion and HostNotion all take a monthly fee since they manage all the "hacky bits" for you; Fruition is open-source but any domain with a decent amount of daily visit will soon clash against CloudFlare's free tier limitations, and force you to upgrade to the 5$ or more plan (plus you need to setup Cloudflare yourself)
+- **Not free** - Super, HostingPotion and HostNotion all take a monthly fee since they manage all the "hacky bits" for you; Fruition is open-source, but any domain with a decent amount of daily visits will soon clash against CloudFlare's free tier limitations, and force you to upgrade to the 5$ or more plan (plus you need to setup Cloudflare yourself)
 - **Slow-ish** - As the page is still hosted on Notion, it comes bundled with all their analytics, editing / collaboration javascript, vendors css, and more bloat which causes the page to load at speeds that are not exactly appropriate for a simple blog / website. Running [example page](https://www.notion.so/The-perfect-It-s-Always-Sunny-in-Philadelphia-episode-d08aaec2b24946408e8be0e9f2ae857e) on Google's [PageSpeed Insights](https://developers.google.com/speed/pagespeed/insights/) scores a measly **24 - 66** on mobile / desktop.
-- **Ugly URLs** - While the services above enable the use of custom domains, the URLs for individual pages are stuck with the long, ugly, original Notion URL (apart from Fruition - they got custom URLs figured out, altough you will always see the original URL flashing for an instant when the page is loaded).
+- **Ugly URLs** - While the services above enable the use of custom domains, the URLs for individual pages are stuck with the long, ugly, original Notion URL (apart from Fruition - they got custom URLs figured out, although you will always see the original URL flashing for an instant when the page is loaded).
 - **Notion Free Account Limitations** - Recently Notion introduced a change to its pricing model where public pages can't be set to be indexed by search engines on a free account (but they also removed the blocks count limitations, which is a good trade-off if you ask me)
 
 **Loconotion** approaches this a bit differently. It lets Notion render the page, then scrapes it and saves a static version of the page to disk. This offers the following benefits:
 
 - Strips out all the unnecessary bloat, like Notion's analytics, vendors scripts / styles, and javascript left in to enable collaboration.
 - Caches all images / assets / fonts (hashing filenames), while keeping links intact.
-- Cleans up the pages urls, letting you use custom slugs if desired
-- Full meta tags controls, for the whole site or individual pages
+- Cleans up the page urls, letting you use custom slugs if desired
+- Full meta tags controls for the whole site or individual pages
 - Granular custom Goggle Fonts control on headings, navbar, body and code blocks
 - Lets you inject any custom style or script, from custom analytics or real-time chat support to hidden crypto miners (please don't do that)
 - Outputs static files ready to be deployed on Netlify, GitHub Pages, Vercel, your Raspberry PI, that cheap second-hand Thinkpad you're using as a random server - you name it.
@@ -27,19 +27,19 @@ The result? A faster, self-contained version of the page that keeps all of Notio
 
 Bear in mind that as we are effectively parsing a static version of the page, there are some limitations compared to Notion's live public pages:
 
-- All pages will open in their own page and not modals (depending on how you look at it this could be a plus)
+- All pages will open on their own page and not modals (depending on how you look at it this could be a plus)
 - Databases will be presented in their initial view - for example, no switching views from table to gallery and such
 - All editing features will be disabled - no ticking checkboxes or dragging kanban boards cards around. Usually not an issue since a public page to serve as a website would have changes locked.
 - Dynamic elements won't update automatically - for example, the calendar will not highlight the current date.
 
-Everything else should be fine. Loconotion re-implements the logic on client side for the following dynamic elements so they still work:
+Everything else should be fine. Loconotion re-implements the logic on the client side for the following dynamic elements, so they still work:
 
 - Toggle blocks (nested ones too!)
 - Anchor links
 - Embeds
-- Name column on tables become a link to the page of the database item in that row
+- Name column on tables becomes a link to the page of the database item in that row
 
-On top of that, it defines some additional CSS rules to enable mobile responsiveness across the whole site (in some cases looking even better than Notion's defaults - wasn't exactly thought for mobile).
+On top of that, it defines some additional CSS rules to enable mobile responsiveness across the whole site (in some cases, looking even better than Notion's defaults - it wasn't exactly thought for mobile).
 
 ### But Notion already had an html export function?
 
