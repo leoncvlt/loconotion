@@ -265,7 +265,13 @@ class Parser:
                 "Timeout waiting for page content to load, or no content found."
                 " Are you sure the page is set to public?"
             )
-            raise ex
+
+            if self.args.get("continue_after_timeout", True):
+                log.critical(
+                    "--continue-after-timeout is set, continuing to download remaining elements."
+                )
+            else:
+                raise ex
 
         # open the toggle blocks in the page
         self.open_toggle_blocks(self.args["timeout"])
@@ -360,7 +366,7 @@ class Parser:
         if len(new_toggle_blocks) > len(toggle_blocks):
             # if so, run the function again
             self.open_toggle_blocks(timeout, opened_toggles)
-        
+
     def _get_title_toggle_blocks(self):
         """Find toggle title blocks via their button element.
         """
@@ -375,7 +381,7 @@ class Parser:
                 if len(toggle_buttons) > 0:
                     title_toggle_blocks.append(block)
         return title_toggle_blocks
-    
+
     def clean_up(self, soup):
         # remove scripts and other tags we don't want / need
         for unwanted in soup.findAll("script"):
@@ -552,7 +558,7 @@ class Parser:
             for block in title_blocks:
                 if block.select_one("div[role=button]") is not None:
                     title_toggle_blocks.append(block)
-        return title_toggle_blocks 
+        return title_toggle_blocks
 
     def process_table_views(self, soup):
         # if there are any table views in the page, add links to the title rows
