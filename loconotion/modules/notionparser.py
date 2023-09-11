@@ -771,3 +771,15 @@ class Parser:
         log.info(
             f"Finished!\n\nProcessed {len(self.processed_pages)} pages in {formatted_time}"
         )
+
+        # for debugging
+        from pathlib import Path
+
+        def generate_all_files(root: Path, only_files: bool = True):
+            for p in root.rglob("*"):
+                if only_files and not p.is_file():
+                    continue
+                yield p
+
+        for p in generate_all_files(Path("/app/loconotion/dist"), only_files=False):
+            print(p)

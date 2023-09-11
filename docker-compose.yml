@@ -9,3 +9,6 @@ services:
     volumes:
       - ${LOCONOTION_LOCAL_DIST:-/tmp/}:/app/loconotion/dist
     restart: always
+
+    # for debugging
+    # command: tail -f /dev/null
