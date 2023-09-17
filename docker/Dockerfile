@@ -5,20 +5,19 @@ FROM python:3.8
 RUN apt-get update
 RUN apt-get install -y libgconf-2-4 wget xvfb unzip
 
-# Version of chrome and chromedriver
-ENV CHROME_VERSION 116.0.5845.179-1
-ENV CHROMEDRIVER_VERSION 116.0.5845.96
-
 # Install chrome
 RUN apt-get update && \
     apt-get install -y gnupg wget curl unzip --no-install-recommends && \
     wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
     echo "deb http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list && \
     apt-get update -y && \
-    apt-get install -y google-chrome-stable=${CHROME_VERSION}
+    apt-get install -y google-chrome-stable
+
+# Version of chrome and chromedriver
+RUN export CHROMEDRIVER_VERSION=$(google-chrome-stable --product-version) && echo "$CHROMEDRIVER_VERSION"
+ENV CHROMEDRIVER_DIR /chromedriver
 
 # Install chromedriver
-ENV CHROMEDRIVER_DIR /chromedriver
 RUN wget -q --continue -P $CHROMEDRIVER_DIR "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip"
 RUN unzip $CHROMEDRIVER_DIR/chromedriver* -d $CHROMEDRIVER_DIR
 
