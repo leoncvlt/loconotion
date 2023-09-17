@@ -13,12 +13,12 @@ RUN apt-get update && \
     apt-get update -y && \
     apt-get install -y google-chrome-stable
 
-# Version of chrome and chromedriver
-RUN export CHROMEDRIVER_VERSION=$(google-chrome-stable --product-version) && echo "$CHROMEDRIVER_VERSION"
-ENV CHROMEDRIVER_DIR /chromedriver
 
 # Install chromedriver
-RUN wget -q --continue -P $CHROMEDRIVER_DIR "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip"
+ENV CHROMEDRIVER_DIR /chromedriver
+RUN export CHROMEDRIVER_VERSION=$(google-chrome-stable --product-version) && \
+    echo "$CHROMEDRIVER_VERSION" && \
+    wget -q --continue -P $CHROMEDRIVER_DIR "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip"
 RUN unzip $CHROMEDRIVER_DIR/chromedriver* -d $CHROMEDRIVER_DIR
 
 RUN mv $CHROMEDRIVER_DIR/chromedriver-linux64/chromedriver $CHROMEDRIVER_DIR
