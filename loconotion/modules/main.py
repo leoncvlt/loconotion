@@ -51,6 +51,11 @@ def get_args():
         " If content from the page seems to be missing, try increasing this value",
     )
     argparser.add_argument(
+        "-C", "--continue-after-timeout",
+        action="store_true",
+        help="Continue to download remaining pages or elements after a --timeout error occurs",
+    )
+    argparser.add_argument(
         "--clean",
         action="store_true",
         help="Delete all previously cached files for the site before generating it",

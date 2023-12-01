@@ -221,6 +221,9 @@ On top of this, the script can take these optional arguments:
   --timeout TIMEOUT     Time in seconds to wait for the loading of lazy-loaded
                         dynamic elements (default 5). If content from the page
                         seems to be missing, try increasing this value
+  -C, --continue-after-timeout
+                        Continue to download remaining pages or elements after
+                        a --timeout error occurs
   --clean               Delete all previously cached files for the site before
                         generating it
   --clean-css           Delete previously cached .css files for the site
