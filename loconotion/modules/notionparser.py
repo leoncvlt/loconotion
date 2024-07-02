@@ -29,6 +29,7 @@ except ModuleNotFoundError as error:
     sys.exit(1)
 
 from .conditions import notion_page_loaded, toggle_block_has_opened
+from selenium.webdriver.common.by import By
 
 
 class Parser:
@@ -238,11 +239,10 @@ class Parser:
         chrome_options.add_argument("--log-level=3")
         chrome_options.add_argument("--silent")
         chrome_options.add_argument("--disable-logging")
+        
         #  removes the 'DevTools listening' log message
         chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])
         return webdriver.Chrome(
-            executable_path=str(chromedriver_path),
-            service_log_path=str(logs_path),
             options=chrome_options,
         )
 
@@ -323,18 +323,20 @@ class Parser:
         Opening toggles is needed for hooking up our custom toggle logic afterwards.
         """
         opened_toggles = exclude
-        toggle_blocks = self.driver.find_elements_by_class_name("notion-toggle-block")
+        toggle_blocks = self.driver.find_elements(By.CLASS_NAME, "notion-toggle-block")
         toggle_blocks += self._get_title_toggle_blocks()
         log.debug(f"Opening {len(toggle_blocks)} new toggle blocks in the page")
         for toggle_block in toggle_blocks:
             if toggle_block not in opened_toggles:
-                toggle_button = toggle_block.find_element_by_css_selector(
+                toggle_button = toggle_block.find_element(By.CSS_SELECTOR,
                     "div[role=button]"
                 )
                 # check if the toggle is already open by the direction of its arrow
                 is_toggled = "(180deg)" in (
-                    toggle_button.find_element_by_tag_name("svg").get_attribute("style")
+                    toggle_button.find_element(By.TAG_NAME,"svg").get_attribute("style")
+
                 )
+
                 if not is_toggled:
                     # click on it, then wait until all elements are displayed
                     self.driver.execute_script("arguments[0].click();", toggle_button)
@@ -353,7 +355,7 @@ class Parser:
 
         # after all toggles have been opened, check the page again to see if
         # any toggle block had nested toggle blocks inside them
-        new_toggle_blocks = self.driver.find_elements_by_class_name(
+        new_toggle_blocks = self.driver.find_elements(By.CLASS_NAME, 
             "notion-toggle-block"
         )
         new_toggle_blocks += self._get_title_toggle_blocks()
@@ -367,11 +369,11 @@ class Parser:
         title_toggle_blocks = []
         header_types = ["header", "sub_header", "sub_sub_header"]
         for header_type in header_types:
-            title_blocks = self.driver.find_elements_by_class_name(
+            title_blocks = self.driver.find_elements(By.CLASS_NAME, 
                 f"notion-selectable.notion-{header_type}-block"
             )
             for block in title_blocks:
-                toggle_buttons = block.find_elements_by_css_selector("div[role=button]")
+                toggle_buttons = block.find_elements(By.CSS_SELECTOR, "div[role=button]")
                 if len(toggle_buttons) > 0:
                     title_toggle_blocks.append(block)
         return title_toggle_blocks

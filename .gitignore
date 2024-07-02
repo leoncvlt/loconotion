@@ -147,3 +147,5 @@ dmypy.json
 .temp/
 .logs/
 .idea/
+
+.venv/

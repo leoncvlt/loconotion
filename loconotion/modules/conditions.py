@@ -1,4 +1,5 @@
 import logging
+from selenium.webdriver.common.by import By
 
 log = logging.getLogger(f"loconotion.{__name__}")
 
@@ -11,15 +12,15 @@ class notion_page_loaded(object):
 
     def __call__(self, driver):
         notion_presence = len(
-            driver.find_elements_by_class_name("notion-presence-container")
+            driver.find_elements(By.CLASS_NAME, "notion-presence-container")
         )
         if (notion_presence):
-            unknown_blocks = len(driver.find_elements_by_class_name("notion-unknown-block"))
-            loading_spinners = len(driver.find_elements_by_class_name("loading-spinner"))
-            scrollers = driver.find_elements_by_class_name("notion-scroller")
+            unknown_blocks = len(driver.find_elements(By.CLASS_NAME, "notion-unknown-block"))
+            loading_spinners = len(driver.find_elements(By.CLASS_NAME, "loading-spinner"))
+            scrollers = driver.find_elements(By.CLASS_NAME, "notion-scroller")
             scrollers_with_children = [];
             for scroller in scrollers:
-                children = len(scroller.find_elements_by_tag_name("div"))
+                children = len(scroller.find_elements(By.TAG_NAME, "div"))
                 if children > 0:
                     scrollers_with_children.append(scroller)
             source_changed = self.previous_page_source != driver.page_source
@@ -48,14 +49,14 @@ class toggle_block_has_opened(object):
         self.toggle_block = toggle_block
 
     def __call__(self, driver):
-        toggle_content = self.toggle_block.find_element_by_css_selector("div:not([style]")
+        toggle_content = self.toggle_block.find_element(By.CSS_SELECTOR,"div:not([style]")
         if toggle_content:
-            content_children = len(toggle_content.find_elements_by_tag_name("div"))
+            content_children = len(toggle_content.find_elements(By.TAG_NAME, "div"))
             unknown_children = len(
-                toggle_content.find_elements_by_class_name("notion-unknown-block")
+                toggle_content.find_elements(By.CLASS_NAME, "notion-unknown-block")
             )
             is_loading = len(
-                self.toggle_block.find_elements_by_class_name("loading-spinner")
+                self.toggle_block.find_elements(By.CLASS_NAME, "loading-spinner")
             )
             log.debug(
                 f"Waiting for toggle block to load"
