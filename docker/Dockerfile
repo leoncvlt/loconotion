@@ -7,7 +7,7 @@ RUN apt-get install -y libgconf-2-4 wget xvfb unzip
 
 # Install Chrome (compatible version with chromedriver below)
 ARG CHROME_VERSION="99.0.4844.74-1"
-RUN wget --no-verbose -O /tmp/chrome.deb https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_${CHROME_VERSION}_amd64.deb \
+RUN wget --no-verbose -O /tmp/chrome.deb https://mirror.cs.uchicago.edu/google-chrome/pool/main/g/google-chrome-stable/google-chrome-stable_99.0.4844.74-1_amd64.deb \
   && apt install -y /tmp/chrome.deb \
   && rm /tmp/chrome.deb
 
